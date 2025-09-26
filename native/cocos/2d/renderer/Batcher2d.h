@@ -64,7 +64,7 @@ public:
     void updateDescriptorSet();
 
     void fillBuffersAndMergeBatches();
-    void walk(Node* node, float parentOpacity);
+    void walk(Node* node, float parentOpacity, bool cacheEnable, float sortingPriority, int sortingLevel);
     void handlePostRender(RenderEntity* entity);
     void handleDrawInfo(RenderEntity* entity, RenderDrawInfo* drawInfo, Node* node);
     void handleComponentDraw(RenderEntity* entity, RenderDrawInfo* drawInfo, Node* node);
@@ -137,7 +137,12 @@ private:
     
     void insertMaskBatch(RenderEntity* entity);
     void createClearModel ();
-
+	
+	// LCC_UI_SORTING_GROUP
+	ccstd::vector<RenderEntity*> rendererCache;
+	bool rendererOrder;
+	void flushRendererCache();
+	
     gfx::DescriptorSet* getDescriptorSet(gfx::Texture* texture, gfx::Sampler* sampler, gfx::DescriptorSetLayout* dsLayout);
 
     StencilManager* _stencilManager{nullptr};
