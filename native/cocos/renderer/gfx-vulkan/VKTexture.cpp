@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2020-2022 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -41,47 +42,118 @@ CCVKTexture::~CCVKTexture() {
 }
 
 void CCVKTexture::doInit(const TextureInfo & /*info*/) {
-    createTexture(_info.width, _info.height, _size);
+    _gpuTexture = ccnew CCVKGPUTexture;
+    _gpuTexture->type = _info.type;
+    _gpuTexture->format = _info.format;
+    _gpuTexture->usage = _info.usage;
+    _gpuTexture->width = _info.width;
+    _gpuTexture->height = _info.height;
+    _gpuTexture->depth = _info.depth;
+    _gpuTexture->arrayLayers = _info.layerCount;
+    _gpuTexture->mipLevels = _info.levelCount;
+    _gpuTexture->samples = _info.samples;
+    _gpuTexture->flags = _info.flags;
+    _gpuTexture->size = _size;
 
+    cmdFuncCCVKCreateTexture(CCVKDevice::getInstance(), _gpuTexture);
+
+    if (!_gpuTexture->memoryless) {
+        CCVKDevice::getInstance()->getMemoryStatus().textureSize += _size;
+        CC_PROFILE_MEMORY_INC(Texture, _size);
+    }
+
+    _gpuTextureView = ccnew CCVKGPUTextureView;
     createTextureView();
 }
 
 void CCVKTexture::doInit(const TextureViewInfo &info) {
     _gpuTexture = static_cast<CCVKTexture *>(info.texture)->gpuTexture();
 
+    _gpuTextureView = ccnew CCVKGPUTextureView;
     createTextureView();
 }
 
-void CCVKTexture::createTexture(uint32_t width, uint32_t height, uint32_t size, bool initGPUTexture) {
-    _gpuTexture = ccnew CCVKGPUTexture;
-    _gpuTexture->width = width;
-    _gpuTexture->height = height;
-    _gpuTexture->size = size;
+void CCVKTexture::createTextureView() {
+    _gpuTextureView->gpuTexture = _gpuTexture;
+    _gpuTextureView->type = _viewInfo.type;
+    _gpuTextureView->format = _viewInfo.format;
+    _gpuTextureView->baseLevel = _viewInfo.baseLevel;
+    _gpuTextureView->levelCount = _viewInfo.levelCount;
+    _gpuTextureView->baseLayer = _viewInfo.baseLayer;
+    _gpuTextureView->layerCount = _viewInfo.layerCount;
+    cmdFuncCCVKCreateTextureView(CCVKDevice::getInstance(), _gpuTextureView);
+}
 
-    if (_swapchain != nullptr) {
-        _gpuTexture->swapchain = static_cast<CCVKSwapchain *>(_swapchain)->gpuSwapchain();
-        _gpuTexture->memoryless = true;
+void CCVKTexture::doDestroy() {
+    if (_gpuTextureView) {
+        CCVKDevice::getInstance()->gpuRecycleBin()->collect(_gpuTextureView);
+        CCVKDevice::getInstance()->gpuDescriptorHub()->disengage(_gpuTextureView);
+        delete _gpuTextureView;
+        _gpuTextureView = nullptr;
     }
 
-    _gpuTexture->type = _info.type;
-    _gpuTexture->format = _info.format;
-    _gpuTexture->usage = _info.usage;
-    _gpuTexture->depth = _info.depth;
-    _gpuTexture->arrayLayers = _info.layerCount;
-    _gpuTexture->mipLevels = _info.levelCount;
-    _gpuTexture->samples = _info.samples;
-    _gpuTexture->flags = _info.flags;
-    bool hasExternalFlag = hasFlag(_gpuTexture->flags, TextureFlagBit::EXTERNAL_NORMAL);
-    if(hasExternalFlag) {
-        _gpuTexture->externalVKImage = reinterpret_cast<VkImage>(_info.externalRes);
-    }
-
-    if (initGPUTexture) {
-        _gpuTexture->init();
+    if (_gpuTexture) {
+        if (!_isTextureView) {
+            if (!_gpuTexture->memoryless) {
+                CCVKDevice::getInstance()->getMemoryStatus().textureSize -= _size;
+                CC_PROFILE_MEMORY_DEC(Texture, _size);
+            }
+            CCVKDevice::getInstance()->gpuRecycleBin()->collect(_gpuTexture);
+            CCVKDevice::getInstance()->gpuBarrierManager()->cancel(_gpuTexture);
+            CCVKDevice::getInstance()->gpuFramebufferHub()->disengage(_gpuTexture);
+            delete _gpuTexture;
+        }
+        _gpuTexture = nullptr;
     }
 }
 
-void CCVKTexture::createTextureView(bool initGPUTextureView) {
+void CCVKTexture::doResize(uint32_t width, uint32_t height, uint32_t size) {
+    if (!width || !height) return;
+
+    if (!_gpuTexture->memoryless) {
+        CCVKDevice::getInstance()->getMemoryStatus().textureSize -= _size;
+        CC_PROFILE_MEMORY_DEC(Texture, _size);
+    }
+
+    CCVKDevice::getInstance()->gpuRecycleBin()->collect(_gpuTextureView);
+    CCVKDevice::getInstance()->gpuRecycleBin()->collect(_gpuTexture);
+
+    _gpuTexture->width = width;
+    _gpuTexture->height = height;
+    _gpuTexture->size = size;
+    _gpuTexture->mipLevels = _info.levelCount;
+    cmdFuncCCVKCreateTexture(CCVKDevice::getInstance(), _gpuTexture);
+
+    if (!_gpuTexture->memoryless) {
+        CCVKDevice::getInstance()->getMemoryStatus().textureSize += size;
+        CC_PROFILE_MEMORY_INC(Texture, size);
+    }
+
+    cmdFuncCCVKCreateTextureView(CCVKDevice::getInstance(), _gpuTextureView);
+
+    CCVKDevice::getInstance()->gpuFramebufferHub()->update(_gpuTexture);
+    CCVKDevice::getInstance()->gpuDescriptorHub()->update(_gpuTexture);
+}
+
+///////////////////////////// Swapchain Specific /////////////////////////////
+
+void CCVKTexture::doInit(const SwapchainTextureInfo & /*info*/) {
+    _gpuTexture = ccnew CCVKGPUTexture;
+    _gpuTexture->type = _info.type;
+    _gpuTexture->format = _info.format;
+    _gpuTexture->usage = _info.usage;
+    _gpuTexture->width = _info.width;
+    _gpuTexture->height = _info.height;
+    _gpuTexture->depth = _info.depth;
+    _gpuTexture->arrayLayers = _info.layerCount;
+    _gpuTexture->mipLevels = _info.levelCount;
+    _gpuTexture->flags = _info.flags;
+    _gpuTexture->samples = _info.samples;
+    _gpuTexture->size = _size;
+
+    _gpuTexture->swapchain = static_cast<CCVKSwapchain *>(_swapchain)->gpuSwapchain();
+    _gpuTexture->memoryless = true;
+
     _gpuTextureView = ccnew CCVKGPUTextureView;
     _gpuTextureView->gpuTexture = _gpuTexture;
     _gpuTextureView->type = _viewInfo.type;
@@ -90,62 +162,6 @@ void CCVKTexture::createTextureView(bool initGPUTextureView) {
     _gpuTextureView->levelCount = _viewInfo.levelCount;
     _gpuTextureView->baseLayer = _viewInfo.baseLayer;
     _gpuTextureView->layerCount = _viewInfo.layerCount;
-
-    if (initGPUTextureView) {
-        _gpuTextureView->init();
-    }
-}
-
-void CCVKTexture::doDestroy() {
-    _gpuTexture = nullptr;
-    _gpuTextureView = nullptr;
-}
-
-void CCVKTexture::doResize(uint32_t width, uint32_t height, uint32_t size) {
-    if (!width || !height) return;
-    createTexture(width, height, size);
-
-    // Hold reference to keep the old textureView alive during DescriptorHub::update.
-    IntrusivePtr<CCVKGPUTextureView> oldTextureView = _gpuTextureView;
-    createTextureView();
-    CCVKDevice::getInstance()->gpuDescriptorHub()->update(oldTextureView, _gpuTextureView);
-}
-
-///////////////////////////// Swapchain Specific /////////////////////////////
-
-void CCVKTexture::doInit(const SwapchainTextureInfo & /*info*/) {
-    createTexture(_info.width, _info.height, _size, false);
-    createTextureView(false);
-}
-
-void CCVKGPUTexture::init() {
-    cmdFuncCCVKCreateTexture(CCVKDevice::getInstance(), this);
-
-    if (!memoryless) {
-        CCVKDevice::getInstance()->getMemoryStatus().textureSize += size;
-        CC_PROFILE_MEMORY_INC(Texture, size);
-    }
-}
-
-void CCVKGPUTexture::shutdown() {
-    if (!memoryless) {
-        CCVKDevice::getInstance()->getMemoryStatus().textureSize -= size;
-        CC_PROFILE_MEMORY_DEC(Texture, size);
-    }
-
-    CCVKDevice::getInstance()->gpuBarrierManager()->cancel(this);
-    if (!hasFlag(flags, TextureFlagBit::EXTERNAL_NORMAL)) {
-        CCVKDevice::getInstance()->gpuRecycleBin()->collect(this);
-    }
-}
-
-void CCVKGPUTextureView::init() {
-    cmdFuncCCVKCreateTextureView(CCVKDevice::getInstance(), this);
-}
-
-void CCVKGPUTextureView::shutdown() {
-    CCVKDevice::getInstance()->gpuDescriptorHub()->disengage(this);
-    CCVKDevice::getInstance()->gpuRecycleBin()->collect(this);
 }
 
 } // namespace gfx

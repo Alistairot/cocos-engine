@@ -1,18 +1,19 @@
 /* eslint-disable max-len */
 /*
- Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2020-2022 Xiamen Yaji Software Co., Ltd.
 
  https://www.cocos.com/
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -21,23 +22,21 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
-*/
+ */
 
 import spine from '../lib/spine-core.js';
 import { IAssembler } from '../../2d/renderer/base';
 import { Batcher2D } from '../../2d/renderer/batcher-2d';
 import { FrameColor } from '../skeleton-cache';
-import { MaterialInstance } from '../../render-scene';
+import { MaterialInstance } from '../../core/renderer';
 import { SkeletonTexture } from '../skeleton-texture';
 import { getAttributeStride, vfmtPosUvColor4B, vfmtPosUvTwoColor4B } from '../../2d/renderer/vertex-format';
 import { Skeleton, SpineMaterialType } from '../skeleton';
-import { Color, Mat4, Vec3 } from '../../core';
-import { BlendFactor } from '../../gfx';
+import { Color, director, Mat4, Node, Texture2D, Vec3 } from '../../core';
+import { BlendFactor } from '../../core/gfx';
 import { legacyCC } from '../../core/global-exports';
 import { StaticVBAccessor } from '../../2d/renderer/static-vb-accessor';
 import { RenderData } from '../../2d/renderer/render-data';
-import { Texture2D } from '../../../typedoc-index.js';
-import { director } from '../../game';
 
 const _quadTriangles = [0, 1, 2, 2, 3, 0];
 const _slotColor = new Color(0, 0, 255, 255);
@@ -150,8 +149,7 @@ function _handleColor (color: FrameColor) {
 function _spineColorToUint32 (spineColor: spine.Color) {
     return ((spineColor.a << 24) >>> 0) + (spineColor.b << 16) + (spineColor.g << 8) + spineColor.r;
 }
-
-function _spineRGBAToUint32 (r: number, g: number, b: number, a: number) {
+function _spineRGBAToUint32 (r:number, g:number, b:number, a:number) {
     return ((a << 24) >>> 0) + (b << 16) + (g << 8) + r;
 }
 
@@ -166,7 +164,6 @@ let _tintAccessor: StaticVBAccessor = null!;
 /**
  * simple 组装器
  * 可通过 `UI.simple` 获取该组装器。
- * @internal Since v3.7.2 this is an engine private object.
  */
 export const simple: IAssembler = {
     vCount: 32767,
@@ -247,7 +244,7 @@ export const simple: IAssembler = {
 };
 
 function updateComponentRenderData (comp: Skeleton, batcher: Batcher2D) {
-    if (!comp._skeleton || comp.renderData === null) return;
+    if (!comp._skeleton) return;
 
     const nodeColor = comp.color;
     _nodeR = nodeColor.r / 255;
@@ -290,6 +287,9 @@ function updateComponentRenderData (comp: Skeleton, batcher: Batcher2D) {
     // Ensure mesh buffer update
     const accessor = _useTint ? _tintAccessor : _accessor;
     accessor.getMeshBuffer(_renderData.chunk.bufferId).setDirty();
+
+    // sync attached node matrix
+    comp.attachUtil._syncAttachedNode();
 
     // Clear temp var.
     _comp = undefined;

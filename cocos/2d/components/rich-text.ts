@@ -1,18 +1,19 @@
 /*
  Copyright (c) 2013-2016 Chukong Technologies Inc.
- Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2017-2020 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+  worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+  not use Cocos Creator software for developing other software or tools that's
+  used for developing games. You are not granted to publish, distribute,
+  sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -27,32 +28,33 @@ import { ccclass, executeInEditMode, executionOrder, help, menu, tooltip, multil
 import { DEBUG, DEV, EDITOR } from 'internal:constants';
 import { Font, SpriteAtlas, TTFFont, SpriteFrame } from '../assets';
 import { EventTouch } from '../../input/types';
-import { assert, warnID, Color, Vec2, CCObject, cclegacy, js, Size } from '../../core';
-import { BASELINE_RATIO, fragmentText, isUnicodeCJK, isUnicodeSpace, getEnglishWordPartAtFirst, getEnglishWordPartAtLast } from '../utils/text-utils';
+import { assert, warnID } from '../../core/platform';
+import { BASELINE_RATIO, fragmentText, isUnicodeCJK, isUnicodeSpace, isEnglishWordPartAtFirst, isEnglishWordPartAtLast, getEnglishWordPartAtFirst, getEnglishWordPartAtLast } from '../utils/text-utils';
 import { HtmlTextParser, IHtmlTextParserResultObj, IHtmlTextParserStack } from '../utils/html-text-parser';
-import { Node } from '../../scene-graph';
+import Pool from '../../core/utils/pool';
+import { Color, Vec2 } from '../../core/math';
+import { Node } from '../../core/scene-graph';
 import { CacheMode, HorizontalTextAlignment, Label, VerticalTextAlignment } from './label';
 import { LabelOutline } from './label-outline';
 import { Sprite } from './sprite';
 import { UITransform } from '../framework';
-import { Component } from '../../scene-graph/component';
-import { NodeEventType } from '../../scene-graph/node-event';
+import { legacyCC } from '../../core/global-exports';
+import { Component } from '../../core/components';
+import { CCObject } from '../../core';
+import { NodeEventType } from '../../core/scene-graph/node-event';
 
 const _htmlTextParser = new HtmlTextParser();
 const RichTextChildName = 'RICHTEXT_CHILD';
 const RichTextChildImageName = 'RICHTEXT_Image_CHILD';
 
-const _tempSize = new Vec2();
-const _tempSizeLeft = new Vec2();
-
 /**
  * 富文本池。<br/>
  */
-const labelPool = new js.Pool((seg: ISegment) => {
+const labelPool = new Pool((seg: ISegment) => {
     if (DEV) {
         assert(!seg.node.parent, 'Recycling node\'s parent should be null!');
     }
-    if (!cclegacy.isValid(seg.node)) {
+    if (!legacyCC.isValid(seg.node)) {
         return false;
     } else {
         const outline = seg.node.getComponent(LabelOutline);
@@ -63,11 +65,11 @@ const labelPool = new js.Pool((seg: ISegment) => {
     return true;
 }, 20);
 
-const imagePool = new js.Pool((seg: ISegment) => {
+const imagePool = new Pool((seg: ISegment) => {
     if (DEV) {
         assert(!seg.node.parent, 'Recycling node\'s parent should be null!');
     }
-    return cclegacy.isValid(seg.node) as boolean;
+    return legacyCC.isValid(seg.node) as boolean;
 }, 10);
 
 //
@@ -237,10 +239,10 @@ export class RichText extends Component {
 
     /**
      * @en
-     * Custom System font of RichText.
+     * Custom System font of RichText
      *
      * @zh
-     * 富文本定制系统字体。
+     * 富文本定制系统字体
      */
     @tooltip('i18n:richtext.font_family')
     get fontFamily () {
@@ -428,17 +430,7 @@ export class RichText extends Component {
             }
         }
     }
-    /**
-     * @en Enum for horizontal text alignment.
-     *
-     * @zh 文本横向对齐类型。
-     */
     public static HorizontalAlign = HorizontalTextAlignment;
-    /**
-     * @en Enum for vertical text alignment.
-     *
-     * @zh 文本垂直对齐类型。
-     */
     public static VerticalAlign = VerticalTextAlignment;
 
     @serializable
@@ -575,24 +567,16 @@ export class RichText extends Component {
     /**
     * @engineInternal
     */
-    protected splitLongStringApproximatelyIn2048 (text: string, styleIndex: number) {
-        const approxSize = text.length * this.fontSize;
+    protected SplitLongStringApproximatelyIn2048 (text: string, styleIndex: number) {
+        const labelSize = this._calculateSize(styleIndex, text);
         const partStringArr: string[] = [];
-        // avoid that many short richtext still execute _calculateSize so that performance is low
-        // we set a threshold as 2048 * 0.8, if the estimated size is less than it, we can skip _calculateSize precisely
-        if (approxSize <= 2048 * 0.8) {
-            partStringArr.push(text);
-            return partStringArr;
-        }
-
-        this._calculateSize(_tempSize, styleIndex, text);
-        if (_tempSize.x < 2048) {
+        if (labelSize.x < 2048) {
             partStringArr.push(text);
         } else {
             const multilineTexts = text.split('\n');
             for (let i = 0; i < multilineTexts.length; i++) {
-                this._calculateSize(_tempSize, styleIndex, multilineTexts[i]);
-                if (_tempSize.x < 2048) {
+                const thisPartSize = this._calculateSize(styleIndex, multilineTexts[i]);
+                if (thisPartSize.x < 2048) {
                     partStringArr.push(multilineTexts[i]);
                 } else {
                     const thisPartSplitResultArr =  this.splitLongStringOver2048(multilineTexts[i], styleIndex);
@@ -614,16 +598,12 @@ export class RichText extends Component {
         let curEnd = longStr.length / 2;
         let curString = longStr.substring(curStart, curEnd);
         let leftString = longStr.substring(curEnd);
-        const curStringSize = this._calculateSize(_tempSize, styleIndex, curString);
-        const leftStringSize = this._calculateSize(_tempSizeLeft, styleIndex, leftString);
-        let maxWidth = this._maxWidth;
-        if (this._maxWidth === 0) {
-            maxWidth = 2047.9; // Callback when maxWidth is 0
-        }
+        let curStringSize = this._calculateSize(styleIndex, curString);
+        let leftStringSize = this._calculateSize(styleIndex, leftString);
 
         // a line should be an unit to split long string
         const lineCountForOnePart = 1;
-        const sizeForOnePart = lineCountForOnePart * maxWidth;
+        const sizeForOnePart = lineCountForOnePart * this.maxWidth;
 
         // divide text into some pieces of which the size is less than sizeForOnePart
         while (curStringSize.x > sizeForOnePart) {
@@ -636,7 +616,7 @@ export class RichText extends Component {
 
             curString = curString.substring(curStart, curEnd);
             leftString = longStr.substring(curEnd);
-            this._calculateSize(curStringSize, styleIndex, curString);
+            curStringSize = this._calculateSize(styleIndex, curString);
         }
 
         // avoid too many loops
@@ -654,7 +634,7 @@ export class RichText extends Component {
 
                 curString = longStr.substring(curStart, curEnd);
                 leftString = longStr.substring(curEnd);
-                this._calculateSize(curStringSize, styleIndex, curString);
+                curStringSize = this._calculateSize(styleIndex, curString);
 
                 leftTryTimes--;
             }
@@ -663,7 +643,7 @@ export class RichText extends Component {
             while (leftTryTimes && curString.length >= 2 && curStringSize.x > sizeForOnePart) {
                 curEnd -= curWordStep;
                 curString = longStr.substring(curStart, curEnd);
-                this._calculateSize(curStringSize, styleIndex, curString);
+                curStringSize = this._calculateSize(styleIndex, curString);
                 // after the first reduction, the step should be 1.
                 curWordStep = 1;
 
@@ -691,21 +671,19 @@ export class RichText extends Component {
 
             curString = longStr.substring(curStart, curEnd);
             leftString = longStr.substring(curEnd);
-            this._calculateSize(leftStringSize, styleIndex, leftString);
-            this._calculateSize(curStringSize, styleIndex, curString);
+            leftStringSize = this._calculateSize(styleIndex, leftString);
 
             leftTryTimes--;
 
             // Exit: If the left part string size is less than 2048, the method will finish.
-            if (leftStringSize.x < 2048 && curStringSize.x < sizeForOnePart) {
-                partStringArr.push(curString);
+            if (leftStringSize.x < 2048) {
                 curStart = text.length;
                 curEnd = text.length;
                 curString = leftString;
-                if (leftString !== '') {
-                    partStringArr.push(curString);
-                }
+                partStringArr.push(curString);
                 break;
+            } else {
+                curStringSize = this._calculateSize(styleIndex, curString);
             }
         }
 
@@ -714,8 +692,8 @@ export class RichText extends Component {
 
     protected _measureText (styleIndex: number, string?: string) {
         const func = (s: string) => {
-            const width = this._calculateSize(_tempSize, styleIndex, s).x;
-            return width;
+            const labelSize = this._calculateSize(styleIndex, s);
+            return labelSize.width;
         };
         if (string) {
             return func(string);
@@ -727,7 +705,7 @@ export class RichText extends Component {
     /**
     * @engineInternal
     */
-    protected _calculateSize (out: Vec2, styleIndex: number, s: string) {
+    protected _calculateSize (styleIndex: number, s: string) {
         let label: ISegment;
         if (this._labelSegmentsCache.length === 0) {
             label = this._createFontLabel(s);
@@ -738,9 +716,8 @@ export class RichText extends Component {
         }
         label.styleIndex = styleIndex;
         this._applyTextAttribute(label);
-        const size = label.node._uiProps.uiTransformComp!.contentSize;
-        Vec2.set(out, size.x, size.y);
-        return out;
+        const labelSize = label.node._uiProps.uiTransformComp!.contentSize;
+        return labelSize;
     }
 
     protected _onTouchEnded (event: EventTouch) {
@@ -1059,7 +1036,7 @@ export class RichText extends Component {
                 }
             }
 
-            const splitArr: string[] = this.splitLongStringApproximatelyIn2048(text, i);
+            const splitArr: string[] = this.SplitLongStringApproximatelyIn2048(text, i);
             text = splitArr.join('\n');
 
             const multilineTexts = text.split('\n');
@@ -1299,4 +1276,4 @@ export class RichText extends Component {
     }
 }
 
-cclegacy.RichText = RichText;
+legacyCC.RichText = RichText;

@@ -1,28 +1,4 @@
-/*
- Copyright (c) 2022-2023 Xiamen Yaji Software Co., Ltd.
-
- https://www.cocos.com/
-
- Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
-
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
-
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- THE SOFTWARE.
-*/
-
-import { ALIPAY, BAIDU, BYTEDANCE, COCOSPLAY, HUAWEI, LINKSURE, OPPO, QTT, VIVO, WECHAT, XIAOMI, DEBUG, TEST, TAOBAO, TAOBAO_MINIGAME, WECHAT_MINI_PROGRAM } from 'internal:constants';
+import { ALIPAY, BAIDU, BYTEDANCE, COCOSPLAY, HUAWEI, LINKSURE, OPPO, QTT, VIVO, WECHAT, XIAOMI, DEBUG, TEST, TAOBAO } from 'internal:constants';
 import { minigame } from 'pal/minigame';
 import { IFeatureMap } from 'pal/system-info';
 import { EventTarget } from '../../../cocos/core/event';
@@ -32,8 +8,6 @@ import { BrowserType, NetworkType, OS, Platform, Language, Feature } from '../en
 let currentPlatform: Platform;
 if (WECHAT) {
     currentPlatform = Platform.WECHAT_GAME;
-} else if (WECHAT_MINI_PROGRAM) {
-    currentPlatform = Platform.WECHAT_MINI_PROGRAM;
 } else if (BAIDU) {
     currentPlatform = Platform.BAIDU_MINI_GAME;
 } else if (XIAOMI) {
@@ -42,8 +16,6 @@ if (WECHAT) {
     currentPlatform = Platform.ALIPAY_MINI_GAME;
 } else if (TAOBAO) {
     currentPlatform = Platform.TAOBAO_CREATIVE_APP;
-} else if (TAOBAO_MINIGAME) {
-    currentPlatform = Platform.TAOBAO_MINI_GAME;
 } else if (BYTEDANCE) {
     currentPlatform = Platform.BYTEDANCE_MINI_GAME;
 } else if (OPPO) {
@@ -76,7 +48,6 @@ class SystemInfo extends EventTarget {
     public readonly browserVersion: string;
     public readonly isXR: boolean;
     private _featureMap: IFeatureMap;
-    private _initPromise: Promise<void>[];
 
     constructor () {
         super();
@@ -127,13 +98,16 @@ class SystemInfo extends EventTarget {
 
         this.isXR = false;
 
+        // init capability
+        const supportWebp = this._supportsWebp();
+
         const isPCWechat = WECHAT && this.os === OS.WINDOWS && !minigame.isDevTool;
         this._featureMap = {
-            [Feature.WEBP]: false,      // Initialize in Promise,
+            [Feature.WEBP]: supportWebp,
             [Feature.IMAGE_BITMAP]: false,
             [Feature.WEB_VIEW]: false,
-            [Feature.VIDEO_PLAYER]: WECHAT || WECHAT_MINI_PROGRAM || OPPO,
-            [Feature.SAFE_AREA]: WECHAT || WECHAT_MINI_PROGRAM || BYTEDANCE,
+            [Feature.VIDEO_PLAYER]: WECHAT || OPPO,
+            [Feature.SAFE_AREA]: WECHAT || BYTEDANCE,
 
             [Feature.INPUT_TOUCH]: !isPCWechat,
             [Feature.EVENT_KEYBOARD]: isPCWechat,
@@ -143,57 +117,26 @@ class SystemInfo extends EventTarget {
             [Feature.EVENT_GAMEPAD]: false,
             [Feature.EVENT_HANDLE]: this.isXR,
             [Feature.EVENT_HMD]: this.isXR,
-            [Feature.EVENT_HANDHELD]: false,
         };
-
-        this._initPromise = [];
-        this._initPromise.push(this._supportsWebpPromise());
 
         this._registerEvent();
     }
 
-    private _supportsWebpPromise (): Promise<void> {
-        if (!TEST) {
-            return this._supportsWebp().then((isSupport) => {
-                this._setFeature(Feature.WEBP, isSupport);
-            });
-        }
-        return Promise.resolve();
-    }
-
-    private _supportsWebp (): Promise<boolean> {
-        return new Promise<boolean>((resolve, reject) => {
-            if (WECHAT_MINI_PROGRAM) {
-                resolve(true);
-                return;
-            }
-            // HACK: webp base64 doesn't support on Wechat Android, which reports some internal error log.
-            if (WECHAT && this.os === OS.ANDROID) {
-                resolve(false);
-                return;
-            }
+    private _supportsWebp (): boolean {
+        // NOTE: canvas.toDataURL() is not supported on WeChat iOS end (Found on iPhone 7p)
+        const isIOSWechat = WECHAT && this.os === OS.IOS;
+        const _tmpCanvas = document.createElement('canvas');  // TODO: remove this
+        let supportWebp: boolean;
+        if (isIOSWechat) {
+            supportWebp = true;
+        } else {
             try {
-                const img = document.createElement('img');
-                const timer = setTimeout(() => {
-                    resolve(false);
-                }, 500);
-                img.onload = function onload () {
-                    clearTimeout(timer);
-                    const result = (img.width > 0) && (img.height > 0);
-                    resolve(result);
-                };
-                img.onerror = function onerror (err) {
-                    clearTimeout(timer);
-                    if (DEBUG) {
-                        console.warn('Create Webp image failed, message: '.concat(err.toString()));
-                    }
-                    resolve(false);
-                };
-                img.src = 'data:image/webp;base64,UklGRiIAAABXRUJQVlA4IBYAAAAwAQCdASoBAAEADsD+JaQAA3AAAAAA';
-            } catch (error) {
-                resolve(false);
+                supportWebp = TEST ? false : _tmpCanvas.toDataURL('image/webp').startsWith('data:image/webp');
+            } catch (e) {
+                supportWebp  = false;
             }
-        });
+        }
+        return supportWebp;
     }
 
     private _registerEvent () {
@@ -203,14 +146,6 @@ class SystemInfo extends EventTarget {
         minigame.onShow(() => {
             this.emit('show');
         });
-    }
-
-    private _setFeature (feature: Feature, value: boolean) {
-        return this._featureMap[feature] = value;
-    }
-
-    public init (): Promise<void[]> {
-        return Promise.all(this._initPromise);
     }
 
     public hasFeature (feature: Feature): boolean {

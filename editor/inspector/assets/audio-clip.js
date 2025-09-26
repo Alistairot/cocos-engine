@@ -1,11 +1,8 @@
-'use strict';
-
-exports.template = /* html */`
+exports.template = `
 <section class="asset-audio-clip">
 </section>
 `;
-
-exports.style = /* css */`
+exports.style = `
 .asset-audio-clip .audio {
     outline: none;
     width: 100%;
@@ -13,11 +10,9 @@ exports.style = /* css */`
     margin-bottom: 16px;
 }
 `;
-
 exports.$ = {
-    container: '.asset-audio-clip',
+    constainer: '.asset-audio-clip',
 };
-
 exports.update = function(assetList, metaList) {
     // Support multi-select list display, limit the number of display
     let html = '';
@@ -35,5 +30,5 @@ exports.update = function(assetList, metaList) {
         html += `<audio class="audio" controls="controls" src="${asset.file}?v=${Date.now()}"></audio>`;
     });
 
-    this.$.container.innerHTML = html;
+    this.$.constainer.innerHTML = html;
 };

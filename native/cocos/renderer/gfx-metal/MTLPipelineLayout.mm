@@ -44,7 +44,7 @@ void CCMTLPipelineLayout::doInit(const PipelineLayoutInfo &info) {
 
     for (size_t i = 0; i < setCount; i++) {
         const auto *setLayout = _setLayouts[i];
-        CC_ASSERT_NOT_NULL(setLayout);
+        CC_ASSERT(setLayout != nullptr);
         auto gpuDescriptorSetLayout = static_cast<const CCMTLDescriptorSetLayout *>(setLayout)->gpuDescriptorSetLayout();
         auto dynamicCount = gpuDescriptorSetLayout->dynamicBindings.size();
         auto &indices = _gpuPipelineLayout->dynamicOffsetIndices[i];

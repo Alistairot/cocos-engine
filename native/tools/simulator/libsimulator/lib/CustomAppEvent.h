@@ -39,7 +39,8 @@
 #include "json/stringbuffer.h"
 #include "json/writer.h"
 
-#include "cocos/core/event/EventBus.h"
+#include "cocos/bindings/event/CustomEventTypes.h"
+#include "cocos/bindings/event/EventDispatcher.h"
 
 enum {
     APP_EVENT_MENU = 1,
@@ -48,17 +49,23 @@ enum {
 
 #define kAppEventName "APP.EVENT"
 
-struct CC_LIBSIM_DLL CustomAppEvent final {
+class CC_LIBSIM_DLL CustomAppEvent : public cc::CustomEvent {
+public:
     /** Constructor */
-    CustomAppEvent(const std::string &eventName, int type) : eventName(eventName), eventType(type) {}
+    CustomAppEvent(const std::string &eventName, int type);
 
-    std::string eventName;
-    std::string dataString;
-    int eventType;
-    void *menuItem{nullptr};
+    /** Gets event name */
+    inline const std::string &getEventName() const { return _eventName; };
+
+    void setEventType(int type);
+    int getEventType();
+    void setDataString(std::string data);
+    std::string getDataString();
+
+protected:
+    std::string _eventName;
+    std::string _dataString;
+    int _eventType;
 };
-
-DECLARE_EVENT_BUS(Simulator)
-DECLARE_BUS_EVENT_ARG1(SimulatorAppEvent, Simulator, const CustomAppEvent &)
 
 #endif /* defined(__Simulator__AppEvent__) */

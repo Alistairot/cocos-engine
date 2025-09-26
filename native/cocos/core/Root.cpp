@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2021 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -20,22 +21,16 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
-****************************************************************************/
+ ****************************************************************************/
 
 #include "core/Root.h"
 #include "2d/renderer/Batcher2d.h"
+#include "core/event/CallbacksInvoker.h"
+#include "core/event/EventTypesToJS.h"
 #include "application/ApplicationManager.h"
-#include "bindings/event/EventDispatcher.h"
-#include "pipeline/custom/RenderingModule.h"
-#include "platform/interfaces/modules/IScreen.h"
-#include "platform/interfaces/modules/ISystemWindow.h"
-#include "platform/interfaces/modules/ISystemWindowManager.h"
 #include "platform/java/modules/XRInterface.h"
-#if CC_USE_DEBUG_RENDERER
-    #include "profiler/DebugRenderer.h"
-#endif
-#include "engine/EngineEvents.h"
 #include "profiler/Profiler.h"
+#include "renderer/gfx-base/GFXDef.h"
 #include "renderer/gfx-base/GFXDevice.h"
 #include "renderer/gfx-base/GFXSwapchain.h"
 #include "renderer/pipeline/Define.h"
@@ -62,6 +57,7 @@ Root *Root::getInstance() {
 Root::Root(gfx::Device *device)
 : _device(device) {
     instance = this;
+    _eventProcessor = new CallbacksInvoker();
     // TODO(minggo):
     //    this._dataPoolMgr = legacyCC.internal.DataPoolManager && new legacyCC.internal.DataPoolManager(device) as DataPoolManager;
 
@@ -71,54 +67,13 @@ Root::Root(gfx::Device *device)
 
 Root::~Root() {
     destroy();
+    CC_SAFE_DELETE(_eventProcessor);
     instance = nullptr;
 }
 
-void Root::initialize(gfx::Swapchain * /*swapchain*/) {
-    auto *windowMgr = CC_GET_PLATFORM_INTERFACE(ISystemWindowManager);
-    const auto &windows = windowMgr->getWindows();
-    for (const auto &pair : windows) {
-        auto *window = pair.second.get();
-        scene::RenderWindow *renderWindow = createRenderWindowFromSystemWindow(window);
-        if (!_mainRenderWindow && (window->getWindowId() == ISystemWindow::mainWindowId)) {
-            _mainRenderWindow = renderWindow;
-        }
-    }
-    _curRenderWindow = _mainRenderWindow;
+void Root::initialize(gfx::Swapchain *swapchain) {
+    _swapchain = swapchain;
     _xr = CC_GET_XR_INTERFACE();
-    addWindowEventListener();
-    // TODO(minggo):
-    // return Promise.resolve(builtinResMgr.initBuiltinRes(this._device));
-    const uint32_t usedUBOVectorCount = (pipeline::UBOGlobal::COUNT + pipeline::UBOCamera::COUNT
-        + pipeline::UBOShadow::COUNT + pipeline::UBOLocal::COUNT + pipeline::UBOWorldBound::COUNT) / 4;
-    uint32_t maxJoints = (_device->getCapabilities().maxVertexUniformVectors - usedUBOVectorCount) / 3;
-    maxJoints = maxJoints < 256 ? maxJoints : 256;
-    pipeline::localDescriptorSetLayoutResizeMaxJoints(maxJoints);
-
-    _debugView = std::make_unique<pipeline::DebugView>();
-}
-
-render::Pipeline *Root::getCustomPipeline() const {
-    return dynamic_cast<render::Pipeline *>(_pipelineRuntime.get());
-}
-
-scene::RenderWindow *Root::createRenderWindowFromSystemWindow(ISystemWindow *window) {
-    if (!window) {
-        return nullptr;
-    }
-
-    uint32_t windowId = window->getWindowId();
-    auto handle = window->getWindowHandle();
-    const auto &size = window->getViewSize();
-
-    gfx::SwapchainInfo info;
-    info.width = static_cast<uint32_t>(size.width);
-    info.height = static_cast<uint32_t>(size.height);
-    info.windowHandle = reinterpret_cast<void *>(handle); // NOLINT
-    info.windowId = window->getWindowId();
-
-    gfx::Swapchain *swapchain = gfx::Device::getInstance()->createSwapchain(info);
-    _swapchains.emplace_back(swapchain);
 
     gfx::RenderPassInfo renderPassInfo;
 
@@ -131,27 +86,32 @@ scene::RenderWindow *Root::createRenderWindowFromSystemWindow(ISystemWindow *win
     depthStencilAttachment.depthStoreOp = gfx::StoreOp::DISCARD;
     depthStencilAttachment.stencilStoreOp = gfx::StoreOp::DISCARD;
 
-    scene::IRenderWindowInfo windowInfo;
-    windowInfo.title = StringUtil::format("renderWindow_%d", windowId);
-    windowInfo.width = swapchain->getWidth();
-    windowInfo.height = swapchain->getHeight();
-    windowInfo.renderPassInfo = renderPassInfo;
-    windowInfo.swapchain = swapchain;
+    scene::IRenderWindowInfo info;
+    info.title = ccstd::string{"rootMainWindow"};
+    info.width = swapchain->getWidth();
+    info.height = swapchain->getHeight();
+    info.renderPassInfo = renderPassInfo;
+    info.swapchain = swapchain;
+    _mainWindow = createWindow(info);
 
-    return createWindow(windowInfo);
+    _curWindow = _mainWindow;
+
+    // TODO(minggo):
+    // return Promise.resolve(builtinResMgr.initBuiltinRes(this._device));
+
+    uint32_t maxJoints = (_device->getCapabilities().maxVertexUniformVectors - 38) / 3;
+    maxJoints = maxJoints < 256 ? maxJoints : 256;
+    pipeline::localDescriptorSetLayoutResizeMaxJoints(maxJoints);
 }
 
-cc::scene::RenderWindow *Root::createRenderWindowFromSystemWindow(uint32_t windowId) {
-    if (windowId == 0) {
-        return nullptr;
-    }
-    return createRenderWindowFromSystemWindow(CC_GET_SYSTEM_WINDOW(windowId));
+render::Pipeline *Root::getCustomPipeline() const {
+    return dynamic_cast<render::Pipeline *>(_pipelineRuntime.get());
 }
 
 void Root::destroy() {
     destroyScenes();
-    removeWindowEventListener();
-    if (_pipelineRuntime) {
+
+    if (_usesCustomPipeline && _pipelineRuntime) {
         _pipelineRuntime->destroy();
     }
     _pipelineRuntime.reset();
@@ -160,21 +120,13 @@ void Root::destroy() {
 
     CC_SAFE_DELETE(_batcher);
 
-    for (auto *swapchain : _swapchains) {
-        CC_SAFE_DELETE(swapchain);
-    }
-    _swapchains.clear();
-
-    _debugView.reset();
-
     // TODO(minggo):
     //    this.dataPoolManager.clear();
 }
 
-void Root::resize(uint32_t width, uint32_t height, uint32_t windowId) { // NOLINT
-    for (const auto &window : _renderWindows) {
-        auto *swapchain = window->getSwapchain();
-        if (swapchain && (swapchain->getWindowId() == windowId)) {
+void Root::resize(uint32_t width, uint32_t height) {
+    for (const auto &window : _windows) {
+        if (window->getSwapchain()) {
             if (_xr) {
                 // xr, window's width and height should not change by device
                 width = window->getWidth();
@@ -216,7 +168,7 @@ public:
     gfx::DescriptorSet *getDescriptorSet() const override {
         return pipeline->getDescriptorSet();
     }
-    const ccstd::vector<gfx::CommandBuffer *> &getCommandBuffers() const override {
+    ccstd::vector<gfx::CommandBuffer *> getCommandBuffers() const override {
         return pipeline->getCommandBuffers();
     }
     pipeline::PipelineSceneData *getPipelineSceneData() const override {
@@ -301,14 +253,20 @@ public:
 } // namespace
 
 bool Root::setRenderPipeline(pipeline::RenderPipeline *rppl /* = nullptr*/) {
-    if (rppl) {
-        if (dynamic_cast<pipeline::DeferredPipeline *>(rppl) != nullptr) {
+    if (!_usesCustomPipeline) {
+        if (rppl != nullptr && dynamic_cast<pipeline::DeferredPipeline *>(rppl) != nullptr) {
             _useDeferredPipeline = true;
+        }
+
+        bool isCreateDefaultPipeline{false};
+        if (!rppl) {
+            rppl = ccnew pipeline::ForwardPipeline();
+            rppl->initialize({});
+            isCreateDefaultPipeline = true;
         }
 
         _pipeline = rppl;
         _pipelineRuntime = std::make_unique<RenderPipelineBridge>(rppl);
-        rppl->setPipelineRuntime(_pipelineRuntime.get());
 
         // now cluster just enabled in deferred pipeline
         if (!_useDeferredPipeline || !_device->hasFeature(gfx::Feature::COMPUTE_SHADER)) {
@@ -317,14 +275,18 @@ bool Root::setRenderPipeline(pipeline::RenderPipeline *rppl /* = nullptr*/) {
         }
         _pipeline->setBloomEnabled(false);
 
-        if (!_pipeline->activate(_mainRenderWindow->getSwapchain())) {
+        if (!_pipeline->activate(_mainWindow->getSwapchain())) {
+            if (isCreateDefaultPipeline) {
+                CC_SAFE_DESTROY(_pipeline);
+            }
+
             _pipeline = nullptr;
             return false;
         }
     } else {
-        CC_ASSERT(!_pipelineRuntime);
-        _pipelineRuntime.reset(render::Factory::createPipeline());
-        if (!_pipelineRuntime->activate(_mainRenderWindow->getSwapchain())) {
+        _pipelineRuntime = std::make_unique<render::NativePipeline>(
+            boost::container::pmr::get_default_resource());
+        if (!_pipelineRuntime->activate(_mainWindow->getSwapchain())) {
             _pipelineRuntime->destroy();
             _pipelineRuntime.reset();
             return false;
@@ -336,10 +298,6 @@ bool Root::setRenderPipeline(pipeline::RenderPipeline *rppl /* = nullptr*/) {
     //    if (scene) {
     //        scene->getSceneGlobals()->activate();
     //    }
-
-#if CC_EDITOR
-    emit<PipelineChanged>();
-#endif
 
     onGlobalPipelineStateChanged();
 
@@ -363,17 +321,11 @@ void Root::onGlobalPipelineStateChanged() {
 }
 
 void Root::activeWindow(scene::RenderWindow *window) {
-    _curRenderWindow = window;
+    _curWindow = window;
 }
 
 void Root::resetCumulativeTime() {
     _cumulativeTime = 0;
-}
-
-void Root::frameSync() {
-    if (_device) {
-        _device->frameSync();
-    }
 }
 
 void Root::frameMoveBegin() {
@@ -389,14 +341,15 @@ void Root::frameMoveBegin() {
     _cameraList.clear();
 }
 
-void Root::frameMoveProcess(bool isNeedUpdateScene, int32_t totalFrames) {
-    for (const auto &window : _renderWindows) {
+void Root::frameMoveProcess(bool isNeedUpdateScene, int32_t totalFrames, const ccstd::vector<IntrusivePtr<scene::RenderWindow>> &windows) {
+    for (const auto &window : windows) {
         window->extractRenderCameras(_cameraList);
     }
 
     if (_pipelineRuntime != nullptr && !_cameraList.empty()) {
+        _swapchains.clear();
+        _swapchains.emplace_back(_swapchain);
         _device->acquire(_swapchains);
-
         // NOTE: c++ doesn't have a Director, so totalFrames need to be set from JS
         uint32_t stamp = totalFrames;
 
@@ -416,7 +369,8 @@ void Root::frameMoveProcess(bool isNeedUpdateScene, int32_t totalFrames) {
 
 void Root::frameMoveEnd() {
     if (_pipelineRuntime != nullptr && !_cameraList.empty()) {
-        emit<BeforeCommit>();
+        _eventProcessor->emit(EventTypesToJS::DIRECTOR_BEFORE_COMMIT, this);
+
         std::stable_sort(_cameraList.begin(), _cameraList.end(), [](const auto *a, const auto *b) {
             return a->getPriority() < b->getPriority();
         });
@@ -429,13 +383,8 @@ void Root::frameMoveEnd() {
             }
         }
     #endif
-    #if CC_USE_DEBUG_RENDERER
-        CC_DEBUG_RENDERER->update();
-    #endif
 
-        emit<BeforeRender>();
         _pipelineRuntime->render(_cameraList);
-        emit<AfterRender>();
 #endif
         _device->present();
     }
@@ -445,7 +394,7 @@ void Root::frameMoveEnd() {
     }
 }
 
-void Root::frameMove(float deltaTime, int32_t totalFrames) { // NOLINT
+void Root::frameMove(float deltaTime, int32_t totalFrames) {
     CCObject::deferredDestroy();
 
     _frameTime = deltaTime;
@@ -463,7 +412,7 @@ void Root::frameMove(float deltaTime, int32_t totalFrames) { // NOLINT
         doXRFrameMove(totalFrames);
     } else {
         frameMoveBegin();
-        frameMoveProcess(true, totalFrames);
+        frameMoveProcess(true, totalFrames, _windows);
         frameMoveEnd();
     }
 }
@@ -472,32 +421,23 @@ scene::RenderWindow *Root::createWindow(scene::IRenderWindowInfo &info) {
     IntrusivePtr<scene::RenderWindow> window = ccnew scene::RenderWindow();
 
     window->initialize(_device, info);
-    _renderWindows.emplace_back(window);
+    _windows.emplace_back(window);
     return window;
 }
 
 void Root::destroyWindow(scene::RenderWindow *window) {
-    auto it = std::find(_renderWindows.begin(), _renderWindows.end(), window);
-    if (it != _renderWindows.end()) {
+    auto it = std::find(_windows.begin(), _windows.end(), window);
+    if (it != _windows.end()) {
         CC_SAFE_DESTROY(*it);
-        _renderWindows.erase(it);
+        _windows.erase(it);
     }
 }
 
 void Root::destroyWindows() {
-    for (const auto &window : _renderWindows) {
+    for (const auto &window : _windows) {
         CC_SAFE_DESTROY(window);
     }
-    _renderWindows.clear();
-}
-
-uint32_t Root::createSystemWindow(const ISystemWindowInfo &info) {
-    auto *windowMgr = CC_GET_PLATFORM_INTERFACE(ISystemWindowManager);
-    ISystemWindow *window = windowMgr->createWindow(info);
-    if (!window) {
-        return 0;
-    }
-    return window->getWindowId();
+    _windows.clear();
 }
 
 scene::RenderScene *Root::createScene(const scene::IRenderSceneInfo &info) {
@@ -558,12 +498,11 @@ void Root::doXRFrameMove(int32_t totalFrames) {
     if (_xr->isRenderAllowable()) {
         bool isSceneUpdated = false;
         int viewCount = _xr->getXRConfig(xr::XRConfigKey::VIEW_COUNT).getInt();
-        bool forceUpdateSceneTwice = _xr->getXRConfig(xr::XRConfigKey::EYE_RENDER_JS_CALLBACK).getBool();
         for (int xrEye = 0; xrEye < viewCount; xrEye++) {
             _xr->beginRenderEyeFrame(xrEye);
 
             ccstd::vector<IntrusivePtr<scene::Camera>> allCameras;
-            for (const auto &window : _renderWindows) {
+            for (const auto &window : _windows) {
                 const ccstd::vector<IntrusivePtr<scene::Camera>> &wndCams = window->getCameras();
                 allCameras.insert(allCameras.end(), wndCams.begin(), wndCams.end());
             }
@@ -581,21 +520,20 @@ void Root::doXRFrameMove(int32_t totalFrames) {
             }
 
             frameMoveBegin();
-            // condition1: mainwindow has left camera && right camera,
-            // but we only need left/right camera when in left/right eye loop
-            // condition2: main camera draw twice
-            for (const auto &window : _renderWindows) {
+            //condition1: mainwindow has left camera && right camera,
+            //but we only need left/right camera when in left/right eye loop
+            //condition2: main camera draw twice
+            ccstd::vector<IntrusivePtr<scene::RenderWindow>> xrWindows;
+            for (const auto &window : _windows) {
                 if (window->getSwapchain()) {
                     // not rt
                     _xr->bindXREyeWithRenderWindow(window, static_cast<xr::XREye>(xrEye));
                 }
+                xrWindows.emplace_back(window);
             }
 
             bool isNeedUpdateScene = xrEye == static_cast<uint32_t>(xr::XREye::LEFT) || (xrEye == static_cast<uint32_t>(xr::XREye::RIGHT) && !isSceneUpdated);
-            if (forceUpdateSceneTwice) {
-                isNeedUpdateScene = true;
-            }
-            frameMoveProcess(isNeedUpdateScene, totalFrames);
+            frameMoveProcess(isNeedUpdateScene, totalFrames, xrWindows);
             auto camIter = _cameraList.begin();
             while (camIter != _cameraList.end()) {
                 scene::Camera *cam = *camIter;
@@ -641,25 +579,6 @@ void Root::doXRFrameMove(int32_t totalFrames) {
     } else {
         CC_LOG_WARNING("[XR] isRenderAllowable is false !!!");
     }
-}
-
-void Root::addWindowEventListener() {
-    _windowDestroyListener.bind([this](uint32_t windowId) -> void {
-        for (const auto &window : _renderWindows) {
-            window->onNativeWindowDestroy(windowId);
-        }
-    });
-
-    _windowRecreatedListener.bind([this](uint32_t windowId) -> void {
-        for (const auto &window : _renderWindows) {
-            window->onNativeWindowResume(windowId);
-        }
-    });
-}
-
-void Root::removeWindowEventListener() {
-    _windowDestroyListener.reset();
-    _windowRecreatedListener.reset();
 }
 
 } // namespace cc

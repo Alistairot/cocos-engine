@@ -25,118 +25,69 @@
 
 #include "platform/mac/modules/SystemWindow.h"
 #import <AppKit/AppKit.h>
-#include "platform/BasePlatform.h"
-#include "platform/interfaces/modules/IScreen.h"
-
-#if CC_EDITOR
-#import <QuartzCore/CAMetalLayer.h>
-#else
 #include "platform/mac/AppDelegate.h"
-#endif
+
+namespace {
+
+}
 
 namespace cc {
 
-SystemWindow::SystemWindow(uint32_t windowId, void *externalHandle)
-    : _windowId(windowId) {
-    if (externalHandle) {
-        _windowHandle = reinterpret_cast<uintptr_t>(externalHandle);
-    }
-}
+SystemWindow::SystemWindow(IEventDispatch *delegate) {}
 
 SystemWindow::~SystemWindow() = default;
 
 bool SystemWindow::createWindow(const char *title,
                                 int w, int h, int flags) {
-#if CC_EDITOR
-    return createWindow(title, 0, 0, w, h, flags);
-#else
+    if (_isWindowCreated) {
+        return true;
+    }
+    _isWindowCreated = true;
+    _width = w;
+    _height = h;
     AppDelegate *delegate = [[NSApplication sharedApplication] delegate];
     NSString *aString = [NSString stringWithUTF8String:title];
-    _window = [delegate createLeftBottomWindow:aString width:w height:h];
-    NSView *view = [_window contentView];
-    _windowHandle = reinterpret_cast<uintptr_t>(view);
-    
-    auto dpr = BasePlatform::getPlatform()->getInterface<IScreen>()->getDevicePixelRatio();
-    _width  = w * dpr;
-    _height = h * dpr;
+    [delegate createLeftBottomWindow:aString width:w height:h];
     return true;
-#endif
 }
 
 bool SystemWindow::createWindow(const char *title,
                                 int x, int y, int w,
                                 int h, int flags) {
-#if CC_EDITOR
-    _width                = w;
-    _height               = h;
-    CAMetalLayer *layer = [[CAMetalLayer layer] retain];
-    layer.pixelFormat   = MTLPixelFormatBGRA8Unorm;
-    layer.frame = CGRectMake(x, y, w, h);
-    [layer setAnchorPoint:CGPointMake(0.f, 0.f)];
-    _windowHandle = reinterpret_cast<uintptr_t>(layer);
-    return true;
-#else
+    if (_isWindowCreated) {
+        return true;
+    }
+    _isWindowCreated = true;
+    _width = w;
+    _height = h;
     AppDelegate *delegate = [[NSApplication sharedApplication] delegate];
     NSString *aString = [NSString stringWithUTF8String:title];
-    _window = [delegate createWindow:aString xPos:x yPos:y width:w height:h];
-    NSView *view = [_window contentView];
-    _windowHandle = reinterpret_cast<uintptr_t>(view);
-    
-    auto dpr = BasePlatform::getPlatform()->getInterface<IScreen>()->getDevicePixelRatio();
-    _width  = w * dpr;
-    _height = h * dpr;
+    [delegate createWindow:aString xPos:x yPos:y width:w height:h];
     return true;
-#endif
 }
-
 void SystemWindow::closeWindow() {
-    //id window = [[[NSApplication sharedApplication] delegate] getWindow];
-    if (_window) {
-        [_window close];
-        _window = nullptr;
+    id window = [[[NSApplication sharedApplication] delegate] getWindow];
+    if (window) {
+        [window close];
     }
 }
-
 void SystemWindow::setCursorEnabled(bool value) {
-    CGError result;
-    if(value) {
-        result = CGAssociateMouseAndMouseCursorPosition(YES);
-        [NSCursor unhide];
-        if(_pointerLock) {
-            CGPoint point =
-                CGPointMake((float)_lastMousePosX, _lastMousePosY);
-            CGWarpMouseCursorPosition(point);
-        }
-        _pointerLock = false;
-    } else {
-        result = CGAssociateMouseAndMouseCursorPosition(NO);
-        [NSCursor hide];
-        _pointerLock = true;
-    }
-    CC_ASSERT(result == kCGErrorSuccess);
-    events::PointerLock::broadcast(!value);
+}
+
+void SystemWindow::copyTextToClipboard(const std::string &text) {
+    NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
+    [pasteboard clearContents];
+    NSString *tmp = [NSString stringWithCString:text.c_str() encoding:NSUTF8StringEncoding];
+    [pasteboard setString:tmp forType:NSPasteboardTypeString];
 }
 
 uintptr_t SystemWindow::getWindowHandle() const {
-    //NSView *view = [[[[NSApplication sharedApplication] delegate] getWindow] contentView];
-    return _windowHandle;
+    NSView *view = [[[[NSApplication sharedApplication] delegate] getWindow] contentView];
+    return reinterpret_cast<uintptr_t>(view);
 }
 
 SystemWindow::Size SystemWindow::getViewSize() const {
     return Size{static_cast<float>(_width), static_cast<float>(_height)};
-}
-
-uint32_t SystemWindow::getWindowId() const { 
-    return _windowId;
-}
-
-bool SystemWindow::isPointerLock() const {
-    return _pointerLock;
-}
-
-void SystemWindow::setLastMousePos(float x, float y) {
-    _lastMousePosX = x;
-    _lastMousePosY = y;
 }
 
 } // namespace cc

@@ -1,5 +1,5 @@
 import { PhysicsMaterial } from "../../cocos/physics/framework/assets/physics-material";
-import { builtinResMgr} from "../../cocos/asset/asset-manager";
+import { builtinResMgr, color, game, Game } from "../../cocos/core";
 
 export function initBuiltinPhysicsMaterial () {
     // default physics material material

@@ -1,52 +1,28 @@
-/*
- Copyright (c) 2022-2023 Xiamen Yaji Software Co., Ltd.
 
- https://www.cocos.com/
-
- Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
-
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
-
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- THE SOFTWARE.
-*/
 
 import { EDITOR } from 'internal:constants';
 
-import { Vec2, Rect, _decorator, Eventify, cclegacy, tooltip, CCInteger, serializable, CCFloat, CCBoolean, warnID } from '../../../../core';
+import { editable } from 'cc.decorator';
+import { ccclass, property, type } from '../../../../core/data/class-decorator';
+import { Component, Vec2, Rect } from '../../../../core';
 import { PhysicsGroup } from '../../../../physics/framework/physics-enum';
+import { Eventify } from '../../../../core/event';
 
 import { RigidBody2D } from '../rigid-body-2d';
-import { createShape } from '../../physics-selector';
-import { Contact2DType, ECollider2DType } from '../../physics-types';
+import { createShape } from '../../instance';
+import { ECollider2DType } from '../../physics-types';
 import { IBaseShape } from '../../../spec/i-physics-shape';
-import { Component } from '../../../../scene-graph';
-
-const { ccclass, editable, property, type } = _decorator;
+import { legacyCC } from '../../../../core/global-exports';
 
 @ccclass('cc.Collider2D')
 export class Collider2D extends Eventify(Component) {
     @editable
-    @tooltip('i18n:physics2d.collider.editing')
     editing = false;
     /**
      * @en Tag. If a node has several collider components, you can judge which type of collider is collided according to the tag.
      * @zh 标签。当一个节点上有多个碰撞组件时，在发生碰撞后，可以使用此标签来判断是节点上的哪个碰撞组件被碰撞了。
      */
-    @type(CCFloat)
-    @serializable
-    @tooltip('i18n:physics2d.collider.tag')
+    @property
     tag = 0;
 
     /**
@@ -56,7 +32,6 @@ export class Collider2D extends Eventify(Component) {
      * 获取或设置分组。
      */
     @type(PhysicsGroup)
-    @tooltip('i18n:physics2d.collider.group')
     public get group (): number {
         return this._group;
     }
@@ -69,10 +44,9 @@ export class Collider2D extends Eventify(Component) {
 
     /**
      * @en The density.
-     * @zh 密度。
+     * @zh 密度
      */
-    @type(CCFloat)
-    @tooltip('i18n:physics2d.collider.density')
+    @property
     get density () {
         return this._density;
     }
@@ -86,8 +60,7 @@ export class Collider2D extends Eventify(Component) {
      * @zh
      * 一个传感器类型的碰撞体会产生碰撞回调，但是不会发生物理碰撞效果。
      */
-    @type(CCBoolean)
-    @tooltip('i18n:physics2d.collider.sensor')
+    @property
     get sensor () {
         return this._sensor;
     }
@@ -99,10 +72,9 @@ export class Collider2D extends Eventify(Component) {
      * @en
      * The friction coefficient, usually in the range [0,1].
      * @zh
-     * 摩擦系数，取值一般在 [0, 1] 之间。
+     * 摩擦系数，取值一般在 [0, 1] 之间
      */
-    @type(CCFloat)
-    @tooltip('i18n:physics2d.collider.friction')
+    @property
     get friction () {
         return this._friction;
     }
@@ -114,10 +86,9 @@ export class Collider2D extends Eventify(Component) {
      * @en
      * The restitution (elasticity) usually in the range [0,1].
      * @zh
-     * 弹性系数，取值一般在 [0, 1]之间。
+     * 弹性系数，取值一般在 [0, 1]之间
      */
-    @type(CCFloat)
-    @tooltip('i18n:physics2d.collider.restitution')
+    @property
     get restitution () {
         return this._restitution;
     }
@@ -128,8 +99,7 @@ export class Collider2D extends Eventify(Component) {
      * @en Position offset
      * @zh 位置偏移量
      */
-    @type(Vec2)
-    @tooltip('i18n:physics2d.collider.offset')
+    @property
     get offset () {
         return this._offset;
     }
@@ -156,7 +126,7 @@ export class Collider2D extends Eventify(Component) {
     /// COMPONENT LIFECYCLE ///
 
     protected onLoad () {
-        if (!EDITOR || cclegacy.GAME_VIEW) {
+        if (!EDITOR || legacyCC.GAME_VIEW) {
             this._shape = createShape(this.TYPE);
             this._shape.initialize(this);
 
@@ -200,9 +170,9 @@ export class Collider2D extends Eventify(Component) {
 
     /**
      * @en
-     * Get the world aabb of the collider.
+     * Get the world aabb of the collider
      * @zh
-     * 获取碰撞体的世界坐标系下的包围盒。
+     * 获取碰撞体的世界坐标系下的包围盒
      */
     get worldAABB (): Readonly<Rect> {
         if (this._shape) {
@@ -212,28 +182,21 @@ export class Collider2D extends Eventify(Component) {
         return new Rect();
     }
 
-    public on<TFunction extends (...any) => void>(type: string, callback: TFunction, thisArg?: any, once?: boolean): typeof callback {
-        if (type === Contact2DType.PRE_SOLVE || type === Contact2DType.POST_SOLVE) {
-            warnID(16002, type, '3.7.1');
-        }
-        return super.on(type, callback, thisArg, once);
-    }
-
     // protected properties
 
     protected _shape: IBaseShape | null = null;
     protected _body: RigidBody2D | null = null;
 
-    @serializable
+    @property
     protected _group = PhysicsGroup.DEFAULT;
-    @serializable
+    @property
     protected _density = 1.0;
-    @serializable
+    @property
     protected _sensor = false;
-    @serializable
+    @property
     protected _friction = 0.2;
-    @serializable
+    @property
     protected _restitution = 0;
-    @serializable
+    @property
     protected _offset = new Vec2();
 }

@@ -1,23 +1,12 @@
-globalThis.__EDITOR__ = globalThis.process && ('electron' in globalThis.process.versions);
-
-require('./wasm');
-const jsbWindow = require('../jsbWindow');
-
 jsb.device = jsb.Device; // cc namespace will be reset to {} in creator, use jsb namespace instead.
 
 const { btoa, atob } = require('./base64/base64.min');
-
-jsbWindow.btoa = btoa;
-jsbWindow.atob = atob;
+window.btoa = btoa;
+window.atob = atob;
 const { Blob, URL } = require('./Blob');
-
-jsbWindow.Blob = Blob;
-jsbWindow.URL = URL;
-jsbWindow.DOMParser = require('./xmldom/dom-parser').DOMParser;
-
-jsbWindow.XMLHttpRequest = jsb.XMLHttpRequest;
-jsbWindow.SocketIO = jsb.SocketIO;
-jsbWindow.WebSocket = jsb.WebSocket;
+window.Blob = Blob;
+window.URL = URL;
+window.DOMParser = require('./xmldom/dom-parser').DOMParser;
 
 require('./jsb_prepare');
 require('./jsb-adapter');
@@ -26,31 +15,31 @@ require('./jsb_input');
 
 let _oldRequestFrameCallback = null;
 let _requestAnimationFrameID = 0;
-const _requestAnimationFrameCallbacks = {};
+let _requestAnimationFrameCallbacks = {};
 let _firstTick = true;
 
-jsbWindow.requestAnimationFrame = function (cb) {
-    const id = ++_requestAnimationFrameID;
+window.requestAnimationFrame = function(cb) {
+    let id = ++_requestAnimationFrameID;
     _requestAnimationFrameCallbacks[id] = cb;
     return id;
 };
 
-jsbWindow.cancelAnimationFrame = function (id) {
+window.cancelAnimationFrame = function(id) {
     delete _requestAnimationFrameCallbacks[id];
 };
 
-function tick (nowMilliSeconds) {
+function tick(nowMilliSeconds) {
     if (_firstTick) {
         _firstTick = false;
-        if (jsbWindow.onload) {
-            const event = new Event('load');
-            event._target = globalThis;
-            jsbWindow.onload(event);
+        if (window.onload) {
+            var event = new Event('load');
+            event._target = window;
+            window.onload(event);
         }
     }
     fireTimeout(nowMilliSeconds);
 
-    for (const id in _requestAnimationFrameCallbacks) {
+    for (let id in _requestAnimationFrameCallbacks) {
         _oldRequestFrameCallback = _requestAnimationFrameCallbacks[id];
         if (_oldRequestFrameCallback) {
             delete _requestAnimationFrameCallbacks[id];
@@ -62,7 +51,7 @@ function tick (nowMilliSeconds) {
 let _timeoutIDIndex = 0;
 
 class TimeoutInfo {
-    constructor (cb, delay, isRepeat, target, args) {
+    constructor(cb, delay, isRepeat, target, args) {
         this.cb = cb;
         this.id = ++_timeoutIDIndex;
         this.start = performance.now();
@@ -73,23 +62,25 @@ class TimeoutInfo {
     }
 }
 
-const _timeoutInfos = {};
+let _timeoutInfos = {};
 
-function fireTimeout (nowMilliSeconds) {
+function fireTimeout(nowMilliSeconds) {
     let info;
-    for (const id in _timeoutInfos) {
+    for (let id in _timeoutInfos) {
         info = _timeoutInfos[id];
         if (info && info.cb) {
             if ((nowMilliSeconds - info.start) >= info.delay) {
                 // console.log(`fireTimeout: id ${id}, start: ${info.start}, delay: ${info.delay}, now: ${nowMilliSeconds}`);
                 if (typeof info.cb === 'string') {
                     Function(info.cb)();
-                } else if (typeof info.cb === 'function') {
+                }
+                else if (typeof info.cb === 'function') {
                     info.cb.apply(info.target, info.args);
                 }
                 if (info.isRepeat) {
                     info.start = nowMilliSeconds;
-                } else {
+                } 
+                else {
                     delete _timeoutInfos[id];
                 }
             }
@@ -97,39 +88,39 @@ function fireTimeout (nowMilliSeconds) {
     }
 }
 
-function createTimeoutInfo (prevFuncArgs, isRepeat) {
-    const cb = prevFuncArgs[0];
+function createTimeoutInfo(prevFuncArgs, isRepeat) {
+    let cb = prevFuncArgs[0];
     if (!cb) {
-        console.error('createTimeoutInfo doesn\'t pass a callback ...');
+        console.error("createTimeoutInfo doesn't pass a callback ...");
         return 0;
     }
 
-    const delay = prevFuncArgs.length > 1 ? prevFuncArgs[1] : 0;
+    let delay = prevFuncArgs.length > 1 ? prevFuncArgs[1] : 0;
     let args;
 
     if (prevFuncArgs.length > 2) {
         args = Array.prototype.slice.call(prevFuncArgs, 2);
     }
 
-    const info = new TimeoutInfo(cb, delay, isRepeat, this, args);
+    let info = new TimeoutInfo(cb, delay, isRepeat, this, args);
     _timeoutInfos[info.id] = info;
     return info.id;
 }
 
-jsbWindow.setTimeout = function (cb) {
+window.setTimeout = function(cb) {
     return createTimeoutInfo(arguments, false);
 };
 
-jsbWindow.clearTimeout = function (id) {
+window.clearTimeout = function(id) {
     delete _timeoutInfos[id];
 };
 
-jsbWindow.setInterval = function (cb) {
+window.setInterval = function(cb) {
     return createTimeoutInfo(arguments, true);
 };
 
-jsbWindow.clearInterval = jsbWindow.clearTimeout;
-jsbWindow.alert = console.error.bind(console);
+window.clearInterval = window.clearTimeout;
+window.alert = console.error.bind(console);
 
 // File utils (Temporary, won't be accessible)
 if (typeof jsb.FileUtils !== 'undefined') {
@@ -137,19 +128,19 @@ if (typeof jsb.FileUtils !== 'undefined') {
     delete jsb.FileUtils;
 }
 
-jsbWindow.XMLHttpRequest.prototype.addEventListener = function (eventName, listener, options) {
-    this[`on${eventName}`] = listener;
-};
+XMLHttpRequest.prototype.addEventListener = function(eventName, listener, options) {
+    this['on' + eventName] = listener;
+}
 
-jsbWindow.XMLHttpRequest.prototype.removeEventListener = function (eventName, listener, options) {
-    this[`on${eventName}`] = null;
-};
+XMLHttpRequest.prototype.removeEventListener = function(eventName, listener, options) {
+    this['on' + eventName] = null;
+}
 
 // SocketIO
-if (jsbWindow.SocketIO) {
-    jsbWindow.io = jsbWindow.SocketIO;
-    jsbWindow.SocketIO.prototype._Emit = jsbWindow.SocketIO.prototype.emit;
-    jsbWindow.SocketIO.prototype.emit = function (uri, delegate) {
+if (window.SocketIO) {
+    window.io = window.SocketIO;
+    SocketIO.prototype._Emit = SocketIO.prototype.emit;
+    SocketIO.prototype.emit = function (uri, delegate) {
         if (typeof delegate === 'object') {
             delegate = JSON.stringify(delegate);
         }
@@ -157,27 +148,27 @@ if (jsbWindow.SocketIO) {
     };
 }
 
-jsbWindow.gameTick = tick;
+window.gameTick = tick;
 
 // generate get set function
 jsb.generateGetSet = function (moduleObj) {
-    for (const classKey in moduleObj) {
-        const classProto = moduleObj[classKey] && moduleObj[classKey].prototype;
+    for (let classKey in moduleObj) {
+        let classProto = moduleObj[classKey] && moduleObj[classKey].prototype;
         if (!classProto) continue;
-        for (const getName in classProto) {
-            const getPos = getName.search(/^get/);
+        for (let getName in classProto) {
+            let getPos = getName.search(/^get/);
             if (getPos == -1) continue;
             let propName = getName.replace(/^get/, '');
-            const nameArr = propName.split('');
-            const lowerFirst = nameArr[0].toLowerCase();
-            const upperFirst = nameArr[0].toUpperCase();
+            let nameArr = propName.split('');
+            let lowerFirst = nameArr[0].toLowerCase();
+            let upperFirst = nameArr[0].toUpperCase();
             nameArr.splice(0, 1);
-            const left = nameArr.join('');
+            let left = nameArr.join('');
             propName = lowerFirst + left;
-            const setName = `set${upperFirst}${left}`;
+            let setName = 'set' + upperFirst + left;
             if (classProto.hasOwnProperty(propName)) continue;
-            const setFunc = classProto[setName];
-            const hasSetFunc = typeof setFunc === 'function';
+            let setFunc = classProto[setName];
+            let hasSetFunc = typeof setFunc === 'function';
             if (hasSetFunc) {
                 Object.defineProperty(classProto, propName, {
                     get () {
@@ -199,16 +190,6 @@ jsb.generateGetSet = function (moduleObj) {
         }
     }
 };
-
-for (const key in jsbWindow) {
-    if (globalThis[key] === undefined) {
-        globalThis[key] = jsbWindow[key];
-    }
-}
-
-if (typeof globalThis.window === 'undefined') {
-    globalThis.window = globalThis;
-}
 
 // promise polyfill relies on setTimeout implementation
 require('./promise.min');

@@ -1,8 +1,6 @@
 'use strict';
 
-const { updateElementReadonly, updateElementInvalid } = require('../utils/assets');
-
-exports.template = /* html */`
+exports.template = `
 <div class="asset-sprite-frame">
     <div class="content">
         <ui-prop>
@@ -91,7 +89,7 @@ exports.template = /* html */`
 </div>
 `;
 
-exports.style = /* css */`
+exports.style = `
     .asset-sprite-frame {
         display: flex;
         flex: 1;
@@ -140,7 +138,9 @@ exports.$ = {
     meshTypeSelect: '.meshType-select',
 };
 
-
+/**
+ * attribute corresponds to the edit element
+ */
 const Elements = {
     packable: {
         ready() {
@@ -152,18 +152,14 @@ const Elements = {
                 });
                 panel.dispatch('change');
             });
-
-            panel.$.packableCheckbox.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
 
             panel.$.packableCheckbox.value = panel.meta.userData.packable;
 
-            updateElementInvalid.call(panel, panel.$.packableCheckbox, 'packable');
-            updateElementReadonly.call(panel, panel.$.packableCheckbox);
+            panel.updateInvalid(panel.$.packableCheckbox, 'packable');
+            panel.updateReadonly(panel.$.packableCheckbox);
         },
     },
     rotated: {
@@ -176,18 +172,13 @@ const Elements = {
                 });
                 panel.dispatch('change');
             });
-
-            panel.$.rotatedCheckbox.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
 
             panel.$.rotatedCheckbox.value = panel.meta.userData.rotated;
 
-            updateElementInvalid.call(panel, panel.$.rotatedCheckbox, 'rotated');
-            updateElementReadonly.call(panel, panel.$.rotatedCheckbox);
+            panel.updateInvalid(panel.$.rotatedCheckbox, 'rotated');
         },
     },
     offsetX: {
@@ -200,18 +191,13 @@ const Elements = {
                 });
                 panel.dispatch('change');
             });
-
-            panel.$.offsetXInput.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
 
             panel.$.offsetXInput.value = panel.meta.userData.offsetX;
 
-            updateElementInvalid.call(panel, panel.$.offsetXInput, 'offsetX');
-            updateElementReadonly.call(panel, panel.$.offsetXInput);
+            panel.updateInvalid(panel.$.offsetXInput, 'offsetX');
         },
     },
     offsetY: {
@@ -224,18 +210,13 @@ const Elements = {
                 });
                 panel.dispatch('change');
             });
-
-            panel.$.offsetYInput.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
 
             panel.$.offsetYInput.value = panel.meta.userData.offsetY;
 
-            updateElementInvalid.call(panel, panel.$.offsetYInput, 'offsetY');
-            updateElementReadonly.call(panel, panel.$.offsetYInput);
+            panel.updateInvalid(panel.$.offsetXInput, 'offsetY');
         },
     },
     trimType: {
@@ -256,10 +237,6 @@ const Elements = {
                     }
                 }
             });
-
-            panel.$.trimTypeSelect.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
@@ -273,8 +250,8 @@ const Elements = {
 
             panel.$.trimTypeSelect.value = panel.meta.userData.trimType;
 
-            updateElementInvalid.call(panel, panel.$.trimTypeSelect, 'trimType');
-            updateElementReadonly.call(panel, panel.$.trimTypeSelect);
+            panel.updateInvalid(panel.$.trimTypeSelect, 'trimType');
+            panel.updateReadonly(panel.$.trimTypeSelect);
         },
     },
     trimThreshold: {
@@ -287,18 +264,14 @@ const Elements = {
                 });
                 panel.dispatch('change');
             });
-
-            panel.$.trimThresholdInput.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
 
             panel.$.trimThresholdInput.value = panel.meta.userData.trimThreshold;
 
-            updateElementInvalid.call(panel, panel.$.trimThresholdInput, 'trimThreshold');
-            updateElementReadonly.call(panel, panel.$.trimThresholdInput);
+            panel.updateInvalid(panel.$.trimThresholdInput, 'trimThreshold');
+            panel.updateReadonly(panel.$.trimThresholdInput);
         },
     },
     trimX: {
@@ -311,17 +284,13 @@ const Elements = {
                 });
                 panel.dispatch('change');
             });
-
-            panel.$.trimXInput.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
 
             panel.$.trimXInput.value = panel.meta.userData.trimX;
 
-            updateElementInvalid.call(panel, panel.$.trimXInput, 'trimX');
+            panel.updateInvalid(panel.$.trimXInput, 'trimX');
             panel.updateReadonlyCustom(panel.$.trimXInput);
         },
     },
@@ -335,17 +304,13 @@ const Elements = {
                 });
                 panel.dispatch('change');
             });
-
-            panel.$.trimYInput.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
 
             panel.$.trimYInput.value = panel.meta.userData.trimY;
 
-            updateElementInvalid.call(panel, panel.$.trimYInput, 'trimY');
+            panel.updateInvalid(panel.$.trimYInput, 'trimY');
             panel.updateReadonlyCustom(panel.$.trimYInput);
         },
     },
@@ -359,17 +324,13 @@ const Elements = {
                 });
                 panel.dispatch('change');
             });
-
-            panel.$.widthInput.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
 
             panel.$.widthInput.value = panel.meta.userData.width;
 
-            updateElementInvalid.call(panel, panel.$.widthInput, 'width');
+            panel.updateInvalid(panel.$.widthInput, 'width');
             panel.updateReadonlyCustom(panel.$.widthInput);
         },
     },
@@ -383,17 +344,13 @@ const Elements = {
                 });
                 panel.dispatch('change');
             });
-
-            panel.$.heightInput.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
 
             panel.$.heightInput.value = panel.meta.userData.height;
 
-            updateElementInvalid.call(panel, panel.$.heightInput, 'height');
+            panel.updateInvalid(panel.$.heightInput, 'height');
             panel.updateReadonlyCustom(panel.$.heightInput);
         },
     },
@@ -408,18 +365,14 @@ const Elements = {
                 panel.dispatch('change');
                 Editor.Message.send('inspector', 'sprite-keys', panel.meta);
             });
-
-            panel.$.borderTopInput.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
 
             panel.$.borderTopInput.value = panel.meta.userData.borderTop;
 
-            updateElementInvalid.call(panel, panel.$.borderTopInput, 'borderTop');
-            updateElementReadonly.call(panel, panel.$.borderTopInput);
+            panel.updateInvalid(panel.$.borderTopInput, 'borderTop');
+            panel.updateReadonly(panel.$.borderTopInput);
 
             panel.$.borderTopInput.setAttribute('max', this.meta.userData.height - this.meta.userData.borderBottom);
         },
@@ -435,18 +388,14 @@ const Elements = {
                 panel.dispatch('change');
                 Editor.Message.send('inspector', 'sprite-keys', panel.meta);
             });
-
-            panel.$.borderBottomInput.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
 
             panel.$.borderBottomInput.value = panel.meta.userData.borderBottom;
 
-            updateElementInvalid.call(panel, panel.$.borderBottomInput, 'borderBottom');
-            updateElementReadonly.call(panel, panel.$.borderBottomInput);
+            panel.updateInvalid(panel.$.borderBottomInput, 'borderBottom');
+            panel.updateReadonly(panel.$.borderBottomInput);
 
             panel.$.borderBottomInput.setAttribute('max', this.meta.userData.height - this.meta.userData.borderTop);
         },
@@ -462,18 +411,14 @@ const Elements = {
                 panel.dispatch('change');
                 Editor.Message.send('inspector', 'sprite-keys', panel.meta);
             });
-
-            panel.$.borderLeftInput.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
 
             panel.$.borderLeftInput.value = panel.meta.userData.borderLeft;
 
-            updateElementInvalid.call(panel, panel.$.borderLeftInput, 'borderLeft');
-            updateElementReadonly.call(panel, panel.$.borderLeftInput);
+            panel.updateInvalid(panel.$.borderLeftInput, 'borderLeft');
+            panel.updateReadonly(panel.$.borderLeftInput);
 
             panel.$.borderLeftInput.setAttribute('max', this.meta.userData.width - this.meta.userData.borderRight);
         },
@@ -489,18 +434,14 @@ const Elements = {
                 panel.dispatch('change');
                 Editor.Message.send('inspector', 'sprite-keys', panel.meta);
             });
-
-            panel.$.borderRightInput.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
 
             panel.$.borderRightInput.value = panel.meta.userData.borderRight;
 
-            updateElementInvalid.call(panel, panel.$.borderRightInput, 'borderRight');
-            updateElementReadonly.call(panel, panel.$.borderRightInput);
+            panel.updateInvalid(panel.$.borderRightInput, 'borderRight');
+            panel.updateReadonly(panel.$.borderRightInput);
 
             panel.$.borderRightInput.setAttribute('max', this.meta.userData.width - this.meta.userData.borderLeft);
         },
@@ -524,7 +465,7 @@ const Elements = {
         update() {
             const panel = this;
 
-            updateElementReadonly.call(panel, panel.$.editButton);
+            panel.updateReadonly(panel.$.editButton);
 
             if (panel.assetList.length > 1) {
                 panel.$.editButton.style.display = 'none';
@@ -554,18 +495,14 @@ const Elements = {
                 panel.dispatch('change');
                 Editor.Message.send('inspector', 'sprite-keys', panel.meta);
             });
-
-            panel.$.pixelsToUnitInput.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
 
             panel.$.pixelsToUnitInput.value = panel.meta.userData.pixelsToUnit;
 
-            updateElementInvalid.call(panel, panel.$.pixelsToUnitInput, 'pixelsToUnit');
-            updateElementReadonly.call(panel, panel.$.pixelsToUnitInput);
+            panel.updateInvalid(panel.$.pixelsToUnitInput, 'pixelsToUnit');
+            panel.updateReadonly(panel.$.pixelsToUnitInput);
         },
     },
     pivotX: {
@@ -578,18 +515,14 @@ const Elements = {
                 });
                 panel.dispatch('change');
             });
-
-            panel.$.pivotXInput.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
 
             panel.$.pivotXInput.value = panel.meta.userData.pivotX;
 
-            updateElementInvalid.call(panel, panel.$.pivotXInput, 'pivotX');
-            updateElementReadonly.call(panel, panel.$.pivotXInput);
+            panel.updateInvalid(panel.$.pivotXInput, 'pivotX');
+            panel.updateReadonly(panel.$.pivotXInput);
         },
     },
     pivotY: {
@@ -602,18 +535,14 @@ const Elements = {
                 });
                 panel.dispatch('change');
             });
-
-            panel.$.pivotYInput.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
 
             panel.$.pivotYInput.value = panel.meta.userData.pivotY;
 
-            updateElementInvalid.call(panel, panel.$.pivotYInput, 'pivotY');
-            updateElementReadonly.call(panel, panel.$.pivotYInput);
+            panel.updateInvalid(panel.$.pivotYInput, 'pivotY');
+            panel.updateReadonly(panel.$.pivotYInput);
         },
     },
     meshType: {
@@ -625,10 +554,6 @@ const Elements = {
                     meta.userData.meshType = Number(event.target.value);
                 });
                 panel.dispatch('change');
-            });
-
-            panel.$.meshTypeSelect.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
             });
         },
         update() {
@@ -644,55 +569,17 @@ const Elements = {
 
             panel.$.meshTypeSelect.value = panel.meta.userData.meshType;
 
-            updateElementInvalid.call(panel, panel.$.meshTypeSelect, 'meshType');
-            updateElementReadonly.call(panel, panel.$.meshTypeSelect);
+            panel.updateInvalid(panel.$.meshTypeSelect, 'meshType');
+            panel.updateReadonly(panel.$.meshTypeSelect);
         },
     },
 };
 
-exports.methods = {
-    /**
-     * Update the business-related read-only state
-     */
-    updateReadonlyCustom(element) {
-        const isCustom = this.meta.userData.trimType === 'custom';
-
-        updateElementReadonly.call(this, element, !isCustom || this.asset.readonly);
-    },
-    /**
-     * Data updates from the Kyushu edit panel
-     */
-    updateFromBroadcast(data) {
-        const panel = this;
-
-        if (data.uuid === panel.meta.uuid) {
-            for (const prop in data.userData) {
-                panel.metaList.forEach((meta) => {
-                    meta.userData[prop] = data.userData[prop];
-                });
-            }
-            panel.dispatch('change');
-            panel.dispatch('snapshot');
-        }
-
-        for (const prop in Elements) {
-            const element = Elements[prop];
-            if (element.update) {
-                element.update.bind(panel)();
-            }
-        }
-    },
-};
-
-exports.ready = function() {
-    for (const prop in Elements) {
-        const element = Elements[prop];
-        if (element.ready) {
-            element.ready.call(this);
-        }
-    }
-};
-
+/**
+ * Methods for automatic rendering of components
+ * @param assetList
+ * @param metaList
+ */
 exports.update = function(assetList, metaList) {
     this.assetList = assetList;
     this.metaList = metaList;
@@ -707,6 +594,18 @@ exports.update = function(assetList, metaList) {
     }
 };
 
+/**
+ * Method of initializing the panel
+ */
+exports.ready = function() {
+    for (const prop in Elements) {
+        const element = Elements[prop];
+        if (element.ready) {
+            element.ready.call(this);
+        }
+    }
+};
+
 exports.close = function() {
     for (const prop in Elements) {
         const element = Elements[prop];
@@ -714,4 +613,60 @@ exports.close = function() {
             element.close.call(this);
         }
     }
+};
+
+exports.methods = {
+    /**
+     * Update whether a data is editable in multi-select state
+     */
+    updateInvalid(element, prop) {
+        const invalid = this.metaList.some((meta) => {
+            return meta.userData[prop] !== this.meta.userData[prop];
+        });
+        element.invalid = invalid;
+    },
+    /**
+     * Update read-only status
+     */
+    updateReadonly(element) {
+        if (this.asset.readonly) {
+            element.setAttribute('disabled', true);
+        } else {
+            element.removeAttribute('disabled');
+        }
+    },
+    /**
+     * Update the business-related read-only state
+     */
+    updateReadonlyCustom(element) {
+        const isCustom = this.meta.userData.trimType === 'custom';
+
+        if (!isCustom || this.asset.readonly) {
+            element.setAttribute('disabled', true);
+        } else {
+            element.removeAttribute('disabled');
+        }
+    },
+    /**
+     * Data updates from the Kyushu edit panel
+     */
+    updateFromBroadcast(data) {
+        const panel = this;
+
+        if (data.uuid === panel.meta.uuid) {
+            for (const prop in data.userData) {
+                panel.metaList.forEach((meta) => {
+                    meta.userData[prop] = data.userData[prop];
+                });
+            }
+            panel.dispatch('change');
+        }
+
+        for (const prop in Elements) {
+            const element = Elements[prop];
+            if (element.update) {
+                element.update.bind(panel)();
+            }
+        }
+    },
 };

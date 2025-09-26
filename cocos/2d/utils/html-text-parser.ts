@@ -1,18 +1,19 @@
 /*
  Copyright (c) 2013-2016 Chukong Technologies Inc.
- Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2017-2020 Xiamen Yaji Software Co., Ltd.
 
  https://www.cocos.com/
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -24,7 +25,7 @@
 */
 
 import { TEST } from 'internal:constants';
-import { cclegacy } from '../../core';
+import { legacyCC } from '../../core/global-exports';
 
 /**
  * @deprecated since v3.5.0, this is an engine private interface that will be removed in the future.
@@ -33,8 +34,7 @@ const eventRegx = /^(click)(\s)*=|(param)(\s)*=/;
 const imageAttrReg = /(\s)*src(\s)*=|(\s)*height(\s)*=|(\s)*width(\s)*=|(\s)*align(\s)*=|(\s)*offset(\s)*=|(\s)*click(\s)*=|(\s)*param(\s)*=/;
 
 /**
- * @en A utils class for parsing HTML texts. The parsed results will be an object array.
- * @zh 一个用于解析HTML文本的工具类。解析后的结果将是一个对象数组。
+ * A utils class for parsing HTML texts. The parsed results will be an object array.
  * @deprecated since v3.5.0, this is an engine private interface that will be removed in the future.
  */
 export interface IHtmlTextParserResultObj{
@@ -43,8 +43,6 @@ export interface IHtmlTextParserResultObj{
 }
 
 /**
- * @en Html Text Parser Stack interface
- * @zh Html 文本解析器接口
  * @deprecated since v3.5.0, this is an engine private interface that will be removed in the future.
  */
 export interface IHtmlTextParserStack{
@@ -65,8 +63,6 @@ export interface IHtmlTextParserStack{
 }
 
 /**
- * @en Html Text Parser Stack
- * @zh Html 文本解析器
  * @deprecated since v3.5.0, this is an engine private interface that will be removed in the future.
  */
 export class HtmlTextParser {
@@ -435,5 +431,5 @@ export class HtmlTextParser {
 }
 
 if (TEST) {
-    cclegacy._Test.HtmlTextParser = HtmlTextParser;
+    legacyCC._Test.HtmlTextParser = HtmlTextParser;
 }

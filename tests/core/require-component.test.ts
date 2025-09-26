@@ -1,6 +1,6 @@
-import { director } from '../../cocos/game';
+import { director, Node, Scene } from '../../cocos/core';
+import { Component } from '../../cocos/core/components/component';
 import { ccclass, requireComponent } from '../../cocos/core/data/decorators';
-import { Node, Scene, Component } from '../../cocos/scene-graph';
 
 
 describe('require component', () => {

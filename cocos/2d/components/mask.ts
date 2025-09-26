@@ -1,18 +1,19 @@
 /*
  Copyright (c) 2013-2016 Chukong Technologies Inc.
- Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2017-2020 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+  worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+  not use Cocos Creator software for developing other software or tools that's
+  used for developing games. You are not granted to publish, distribute,
+  sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -25,14 +26,16 @@
 
 import { ccclass, help, executionOrder, menu, tooltip, displayOrder, type, visible, serializable, range, slide, executeInEditMode } from 'cc.decorator';
 import { JSB } from 'internal:constants';
-import { clamp, Color, Mat4, Vec2, Vec3, warnID, cclegacy, ccenum } from '../../core';
+import { clamp, Color, Mat4, Vec2, Vec3 } from '../../core/math';
+import { ccenum } from '../../core/value-types/enum';
 import { Graphics } from './graphics';
-import { TransformBit } from '../../scene-graph/node-enum';
+import { TransformBit } from '../../core/scene-graph/node-enum';
+import { NodeEventType, Component, warnID } from '../../core';
+import { legacyCC } from '../../core/global-exports';
 import { Stage } from '../renderer/stencil-manager';
-import { NodeEventProcessor } from '../../scene-graph/node-event-processor';
+import { NodeEventProcessor } from '../../core/scene-graph/node-event-processor';
 import { MaskMode } from '../renderer/render-entity';
 import { Sprite } from './sprite';
-import { NodeEventType, Component } from '../../scene-graph';
 
 const _worldMatrix = new Mat4();
 const _vec2_temp = new Vec2();
@@ -160,9 +163,9 @@ export class Mask extends Component {
 
     /**
      * @en
-     * Reverse mask.
+     * Reverse mask
      * @zh
-     * 反向遮罩。
+     * 反向遮罩
      */
     @displayOrder(14)
     @tooltip('i18n:mask.inverted')
@@ -260,10 +263,6 @@ export class Mask extends Component {
         }
     }
 
-    /**
-     * @en Rendering component for providing stencil buffer information.
-     * @zh 用于提供 stencil buffer 信息的渲染组件。
-     */
     get subComp () {
         return this._graphics || this._sprite;
     }
@@ -303,6 +302,10 @@ export class Mask extends Component {
         this.node.on(NodeEventType.SIZE_CHANGED, this._nodeStateChange, this);
     }
 
+    /**
+     * @zh
+     * 图形内容重塑。
+     */
     public onRestore () {
         this._changeRenderType();
         this._updateGraphics();
@@ -319,9 +322,9 @@ export class Mask extends Component {
     }
 
     /**
-     * @en Hit test with point in World Space.
-     * @zh 世界空间中的点击测试。
-     * @param worldPt @en point in World Space. @zh 世界空间中的点击点。
+     * Hit test with point in World Space.
+     *
+     * @param worldPt point in World Space.
      */
     public isHit (worldPt: Vec2) {
         const uiTrans = this.node._uiProps.uiTransformComp!;
@@ -620,7 +623,7 @@ export class Mask extends Component {
     public getMaterial (idx: number): any {
         warnID(9007);
         if (this.subComp) {
-            return this.subComp.getSharedMaterial(idx);
+            return this.subComp.getMaterial(idx);
         }
         return null;
     }
@@ -666,4 +669,4 @@ export class Mask extends Component {
 
 NodeEventProcessor._maskComp = Mask;
 
-cclegacy.Mask = Mask;
+legacyCC.Mask = Mask;

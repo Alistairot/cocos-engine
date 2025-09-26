@@ -1,4 +1,4 @@
-import { deviceManager, RenderType } from "../../../cocos/gfx"
+import { deviceManager, RenderType } from "../../../cocos/core/gfx"
 
 test('determineRenderType', () => {
     // @ts-expect-error

@@ -1,5 +1,4 @@
-const _globalThis = typeof global === 'undefined' ? globalThis : global;
-const _global = typeof window === 'undefined' ? _globalThis : window;
+const _global = typeof window === 'undefined' ? global : window;
 
 function defined (name: string) {
     return typeof _global[name] === 'object';

@@ -608,7 +608,7 @@ class Joint {
     }
 }
 
-class SphericalJoint extends Joint {
+class DistanceJoint extends Joint {
     constructor () { super(); this._impl = new jsbPhy.DistanceJoint(); }
     setPivotA (v) { this._impl.setPivotA(v.x, v.y, v.z); }
     setPivotB (v) { this._impl.setPivotB(v.x, v.y, v.z); }
@@ -632,17 +632,6 @@ class RevoluteJoint extends Joint {
     }
 }
 
-class FixedJoint extends Joint {
-    constructor () { super(); this._impl = new jsbPhy.FixedJoint(); }
-    setBreakForce (v) { this._impl.setBreakForce(v); }
-    setBreakTorque (v) { this._impl.setBreakTorque(v); }
-    onLoad () {
-        super.onLoad();
-        this.setBreakForce(this._com.breakForce);
-        this.setBreakTorque(this._com.breakTorque);
-    }
-}
-
 cc.physics.selector.register('physx', {
     PhysicsWorld,
     RigidBody,
@@ -654,7 +643,6 @@ cc.physics.selector.register('physx', {
     CylinderShape,
     TrimeshShape,
     TerrainShape,
-    PointToPointConstraint: SphericalJoint,
+    PointToPointConstraint: DistanceJoint,
     HingeConstraint: RevoluteJoint,
-    FixedConstraint: FixedJoint,
 });

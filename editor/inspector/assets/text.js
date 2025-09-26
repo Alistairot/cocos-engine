@@ -5,7 +5,7 @@ const { extname } = require('path');
 const MAX_LINES = 400;
 const MAX_LENGTH = 20000;
 
-exports.template = /* html */`
+exports.template = `
 <section class="asset-text">
     <ui-code language="xml"></ui-code>
     <ui-markdown></ui-markdown>
@@ -17,13 +17,12 @@ exports.$ = {
     markdown: 'ui-markdown',
 };
 
-exports.style = /* css */`
+exports.style = `
 .asset-text {
     flex: 1;
     display: flex;
     flex-direction: column;
-    /* it is necessary */
-    height: 0px;
+    height: 0px; // it is necessary
 }
 .asset-text > ui-code {
     flex: 1;

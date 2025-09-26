@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2020-2022 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -25,7 +26,6 @@
 #pragma once
 
 #include <cstring>
-#include <memory>
 #include "VKStd.h"
 #include "gfx-base/GFXDevice.h"
 
@@ -43,9 +43,8 @@ class CCVKGPUTransportHub;
 class CCVKGPUDescriptorHub;
 class CCVKGPUSemaphorePool;
 class CCVKGPUBarrierManager;
+class CCVKGPUFramebufferHub;
 class CCVKGPUDescriptorSetHub;
-class CCVKGPUInputAssemblerHub;
-class CCVKPipelineCache;
 
 class CCVKGPUFencePool;
 class CCVKGPURecycleBin;
@@ -75,9 +74,7 @@ public:
     using Device::createShader;
     using Device::createTexture;
     using Device::createTextureBarrier;
-    using Device::createBufferBarrier;
 
-    void frameSync() override;
     void acquire(Swapchain *const *swapchains, uint32_t count) override;
     void present() override;
 
@@ -87,17 +84,16 @@ public:
         });
     }
 
-    inline CCVKGPUDevice *gpuDevice() const { return _gpuDevice.get(); }
-    inline CCVKGPUContext *gpuContext() { return _gpuContext.get(); }
+    inline CCVKGPUDevice *gpuDevice() const { return _gpuDevice; }
+    inline CCVKGPUContext *gpuContext() { return _gpuContext; }
 
-    inline CCVKGPUBufferHub *gpuBufferHub() const { return _gpuBufferHub.get(); }
-    inline CCVKGPUTransportHub *gpuTransportHub() const { return _gpuTransportHub.get(); }
-    inline CCVKGPUDescriptorHub *gpuDescriptorHub() const { return _gpuDescriptorHub.get(); }
-    inline CCVKGPUSemaphorePool *gpuSemaphorePool() const { return _gpuSemaphorePool.get(); }
-    inline CCVKGPUBarrierManager *gpuBarrierManager() const { return _gpuBarrierManager.get(); }
-    inline CCVKGPUDescriptorSetHub *gpuDescriptorSetHub() const { return _gpuDescriptorSetHub.get(); }
-    inline CCVKGPUInputAssemblerHub *gpuIAHub() const { return _gpuIAHub.get(); }
-    inline CCVKPipelineCache *pipelineCache() const { return _pipelineCache.get(); }
+    inline CCVKGPUBufferHub *gpuBufferHub() { return _gpuBufferHub; }
+    inline CCVKGPUTransportHub *gpuTransportHub() { return _gpuTransportHub; }
+    inline CCVKGPUDescriptorHub *gpuDescriptorHub() { return _gpuDescriptorHub; }
+    inline CCVKGPUSemaphorePool *gpuSemaphorePool() { return _gpuSemaphorePool; }
+    inline CCVKGPUBarrierManager *gpuBarrierManager() { return _gpuBarrierManager; }
+    inline CCVKGPUFramebufferHub *gpuFramebufferHub() { return _gpuFramebufferHub; }
+    inline CCVKGPUDescriptorSetHub *gpuDescriptorSetHub() { return _gpuDescriptorSetHub; }
 
     CCVKGPUFencePool *gpuFencePool();
     CCVKGPURecycleBin *gpuRecycleBin();
@@ -133,30 +129,28 @@ protected:
     Sampler *createSampler(const SamplerInfo &info) override;
     GeneralBarrier *createGeneralBarrier(const GeneralBarrierInfo &info) override;
     TextureBarrier *createTextureBarrier(const TextureBarrierInfo &info) override;
-    BufferBarrier *createBufferBarrier(const BufferBarrierInfo &info) override;
 
     void copyBuffersToTexture(const uint8_t *const *buffers, Texture *dst, const BufferTextureCopy *regions, uint32_t count) override;
     void copyTextureToBuffers(Texture *src, uint8_t *const *buffers, const BufferTextureCopy *region, uint32_t count) override;
     void getQueryPoolResults(QueryPool *queryPool) override;
 
     void initFormatFeature();
-    void initExtensionCapability();
 
-    std::unique_ptr<CCVKGPUDevice> _gpuDevice;
-    std::unique_ptr<CCVKGPUContext> _gpuContext;
+    CCVKGPUDevice *_gpuDevice = nullptr;
+    CCVKGPUContext *_gpuContext = nullptr;
+    ccstd::vector<CCVKTexture *> _depthStencilTextures;
 
-    ccstd::vector<std::unique_ptr<CCVKGPUFencePool>> _gpuFencePools;
-    ccstd::vector<std::unique_ptr<CCVKGPURecycleBin>> _gpuRecycleBins;
-    ccstd::vector<std::unique_ptr<CCVKGPUStagingBufferPool>> _gpuStagingBufferPools;
+    ccstd::vector<CCVKGPUFencePool *> _gpuFencePools;
+    ccstd::vector<CCVKGPURecycleBin *> _gpuRecycleBins;
+    ccstd::vector<CCVKGPUStagingBufferPool *> _gpuStagingBufferPools;
 
-    std::unique_ptr<CCVKGPUBufferHub> _gpuBufferHub;
-    std::unique_ptr<CCVKGPUTransportHub> _gpuTransportHub;
-    std::unique_ptr<CCVKGPUDescriptorHub> _gpuDescriptorHub;
-    std::unique_ptr<CCVKGPUSemaphorePool> _gpuSemaphorePool;
-    std::unique_ptr<CCVKGPUBarrierManager> _gpuBarrierManager;
-    std::unique_ptr<CCVKGPUDescriptorSetHub> _gpuDescriptorSetHub;
-    std::unique_ptr<CCVKGPUInputAssemblerHub> _gpuIAHub;
-    std::unique_ptr<CCVKPipelineCache> _pipelineCache;
+    CCVKGPUBufferHub *_gpuBufferHub{nullptr};
+    CCVKGPUTransportHub *_gpuTransportHub{nullptr};
+    CCVKGPUDescriptorHub *_gpuDescriptorHub{nullptr};
+    CCVKGPUSemaphorePool *_gpuSemaphorePool{nullptr};
+    CCVKGPUBarrierManager *_gpuBarrierManager{nullptr};
+    CCVKGPUFramebufferHub *_gpuFramebufferHub{nullptr};
+    CCVKGPUDescriptorSetHub *_gpuDescriptorSetHub{nullptr};
 
     ccstd::vector<const char *> _layers;
     ccstd::vector<const char *> _extensions;

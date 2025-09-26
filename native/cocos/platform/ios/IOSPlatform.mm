@@ -28,14 +28,13 @@
 #include "platform/interfaces/modules/ISystemWindow.h"
 
 #import <UIKit/UIKit.h>
-#include "base/memory/Memory.h"
+
 #include "modules/Accelerometer.h"
 #include "modules/Battery.h"
 #include "modules/Network.h"
 #include "modules/Screen.h"
 #include "modules/System.h"
 #include "modules/SystemWindow.h"
-#include "modules/SystemWindowManager.h"
 #include "modules/Vibrator.h"
 
 extern int cocos_main(int argc, const char **argv);
@@ -105,8 +104,8 @@ int32_t IOSPlatform::init() {
     registerInterface(std::make_shared<Network>());
     registerInterface(std::make_shared<Screen>());
     registerInterface(std::make_shared<System>());
+    registerInterface(std::make_shared<SystemWindow>());
     registerInterface(std::make_shared<Vibrator>());
-    registerInterface(std::make_shared<SystemWindowManager>());
     return 0;
 }
 
@@ -133,7 +132,7 @@ void IOSPlatform::onPause() {
 
     cc::WindowEvent ev;
     ev.type = cc::WindowEvent::Type::HIDDEN;
-    cc::events::WindowEvent::broadcast(ev);
+    dispatchEvent(ev);
 }
 
 void IOSPlatform::onResume() {
@@ -141,17 +140,13 @@ void IOSPlatform::onResume() {
 
     cc::WindowEvent ev;
     ev.type = cc::WindowEvent::Type::SHOW;
-    cc::events::WindowEvent::broadcast(ev);
+    dispatchEvent(ev);
 }
 
 void IOSPlatform::onClose() {
     cc::WindowEvent ev;
     ev.type = cc::WindowEvent::Type::CLOSE;
-    cc::events::WindowEvent::broadcast(ev);
-}
-
-ISystemWindow *IOSPlatform::createNativeWindow(uint32_t windowId, void *externalHandle) {
-    return ccnew SystemWindow(windowId, externalHandle);
+    dispatchEvent(ev);
 }
 
 } // namespace cc

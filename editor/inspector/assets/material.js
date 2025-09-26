@@ -73,7 +73,7 @@ exports.methods = {
 
         await this.updateInterface();
 
-        await this.change();
+        await this.change({ snapshot: false });
 
         return true;
     },
@@ -83,24 +83,15 @@ exports.methods = {
         await Editor.Message.request('scene', 'apply-material', this.asset.uuid, this.material);
     },
 
-    async abort() {
-        this.reset();
-        await Editor.Message.request('scene', 'preview-material', this.asset.uuid);
-    },
-
     reset() {
         this.dirtyData.uuid = '';
         this.cacheData = {};
     },
 
-    change() {
+    async change(state) {
         this.canUpdatePreview = true;
-        this.setDirtyData();
-        this.dispatch('change');
-    },
-
-    snapshot() {
-        this.dispatch('snapshot');
+        await this.setDirtyData();
+        this.dispatch('change', state);
     },
 
     async updateEffect() {
@@ -217,7 +208,6 @@ exports.methods = {
 
                 $container.$children[i] = document.createElement('ui-prop');
                 $container.$children[i].setAttribute('type', 'dump');
-                $container.$children[i].setAttribute('pass-index', i);
                 $container.appendChild($container.$children[i]);
                 $container.$children[i].render(pass);
 
@@ -235,12 +225,8 @@ exports.methods = {
                     const $section = $container.$children[i].querySelector('ui-section');
                     $section.appendChild($checkbox);
 
-                    // header and switch element appear in `header` slot at the same time, keep the middle distance 12px
-                    const $header = $section.querySelector('div[slot=header]');
-                    $header.style.width = 'auto';
-                    $header.style.flex = '1';
-                    $header.style.minWidth = '0';
-                    $header.style.marginRight = '12px';
+                    const $label = $section.querySelector('ui-label');
+                    $label.style.width = 'calc(var(--left-width) - 10px)';
                 }
 
                 $container.$children[i].querySelectorAll('ui-prop').forEach(($prop) => {
@@ -287,13 +273,6 @@ exports.methods = {
                             $prop.$children.setAttribute('hidden', '');
                         }
                     }
-                });
-            }
-
-            // when passes length more than one, the ui-section of pipeline state collapse
-            if (technique.passes.length > 1) {
-                $container.querySelectorAll('[cache-expand$="PassStates"]').forEach(($pipelineState) => {
-                    $pipelineState.removeAttribute('expand');
                 });
             }
         }
@@ -346,10 +325,10 @@ exports.methods = {
                 return;
             }
 
-            cacheProperty(pass.value, i);
+            cacheProperty(pass.value);
         });
 
-        function cacheProperty(prop, passIndex) {
+        function cacheProperty(prop) {
             for (const name in prop) {
                 // 这些字段是基础类型或配置性的数据，不需要变动
                 if (excludeNames.includes(name)) {
@@ -357,27 +336,22 @@ exports.methods = {
                 }
 
                 if (prop[name] && typeof prop[name] === 'object') {
-                    if (!cacheData[name]) {
-                        cacheData[name] = {};
-                    }
-
-                    const { type, value } = prop[name];
-                    if (type && value !== undefined) {
-                        if (!cacheData[name][passIndex]) {
-                            if (name === 'USE_INSTANCING' && passIndex !== 0) {
-                                continue;
-                            }
-                            cacheData[name][passIndex] = { type };
-                            if (value && typeof value === 'object') {
-                                cacheData[name][passIndex].value = JSON.parse(JSON.stringify(value));
-                            } else {
-                                cacheData[name][passIndex].value = value;
+                    if (!(name in cacheData)) {
+                        const { type, value } = prop[name];
+                        if (type) {
+                            if (value !== undefined) {
+                                cacheData[name] = { type };
+                                if (value && typeof value === 'object') {
+                                    cacheData[name].value = JSON.parse(JSON.stringify(value));
+                                } else {
+                                    cacheData[name].value = value;
+                                }
                             }
                         }
                     }
 
                     if (prop[name].childMap && typeof prop[name].childMap === 'object') {
-                        cacheProperty(prop[name].childMap, passIndex);
+                        cacheProperty(prop[name].childMap);
                     }
                 }
             }
@@ -387,17 +361,13 @@ exports.methods = {
         this.updateInstancing();
     },
 
-    storeCache(dump, passIndex) {
+    storeCache(dump) {
         const { name, type, value, default: defaultValue } = dump;
 
         if (JSON.stringify(value) === JSON.stringify(defaultValue)) {
-            delete this.cacheData[name][passIndex];
+            delete this.cacheData[name];
         } else {
-            const cacheData = this.cacheData;
-            if (!cacheData[name]) {
-                cacheData[name] = {};
-            }
-            cacheData[name][passIndex] = JSON.parse(JSON.stringify({ type, value }));
+            this.cacheData[name] = JSON.parse(JSON.stringify({ type, value }));
         }
     },
 
@@ -408,35 +378,36 @@ exports.methods = {
                 return;
             }
 
-            updateProperty(pass.value, i);
+            updateProperty(pass.value);
         });
 
-        function updateProperty(prop, passIndex) {
+        function updateProperty(prop) {
             for (const name in prop) {
                 if (prop[name] && typeof prop[name] === 'object') {
                     if (name in cacheData) {
-                        const passItem = cacheData[name][passIndex];
-                        if (passItem) {
-                            const { type, value } = passItem;
-                            if (prop[name].type === type && JSON.stringify(prop[name].value) !== JSON.stringify(value)) {
-                                if (value && typeof value === 'object') {
-                                    prop[name].value = JSON.parse(JSON.stringify(value));
-                                } else {
-                                    prop[name].value = value;
-                                }
+                        const { type, value } = cacheData[name];
+                        if (prop[name].type === type && JSON.stringify(prop[name].value) !== JSON.stringify(value)) {
+                            if (value && typeof value === 'object') {
+                                prop[name].value = JSON.parse(JSON.stringify(value));
+                            } else {
+                                prop[name].value = value;
                             }
                         }
                     }
 
                     if (prop[name].childMap && typeof prop[name].childMap === 'object') {
-                        updateProperty(prop[name].childMap, passIndex);
+                        updateProperty(prop[name].childMap);
                     }
                 }
             }
         }
     },
 
-    setDirtyData() {
+    async setDirtyData() {
+        if (this.canUpdatePreview) {
+            await this.updatePreview(true);
+        }
+
         this.dirtyData.realtime = JSON.stringify({
             effect: this.material.effect,
             technique: this.material.technique,
@@ -447,10 +418,6 @@ exports.methods = {
             this.dirtyData.origin = this.dirtyData.realtime;
 
             this.dispatch('snapshot');
-        }
-
-        if (this.canUpdatePreview) {
-            this.updatePreview(true);
         }
     },
 
@@ -496,7 +463,7 @@ exports.update = async function(assetList, metaList) {
     await this.updateEffect();
 
     await this.updateInterface();
-    this.setDirtyData();
+    await this.setDirtyData();
 };
 
 /**
@@ -519,13 +486,11 @@ exports.ready = function() {
         this.material.effect = event.target.value;
         this.material.data = await Editor.Message.request('scene', 'query-effect', this.material.effect);
 
-        // change effect then make technique back to 0
         this.$.technique.value = this.material.technique = 0;
 
         await this.updateInterface();
 
         this.change();
-        this.snapshot();
     });
 
     this.$.location.addEventListener('change', () => {
@@ -537,46 +502,37 @@ exports.ready = function() {
 
     // Event triggered when the technique being used is changed
     this.$.technique.addEventListener('change', async (event) => {
-        this.material.technique = Number(event.target.value);
+        this.material.technique = event.target.value;
         await this.updateInterface();
         this.change();
-        this.snapshot();
     });
 
     // The event is triggered when the useInstancing is modified
     this.$.useInstancing.addEventListener('change-dump', (event) => {
         this.changeInstancing(event.target.dump.value);
-        this.storeCache(event.target.dump, 0);
+        this.storeCache(event.target.dump);
         this.change();
-        this.snapshot();
     });
 
     // The event triggered when the content of material is modified
-    this.$.materialDump.addEventListener('change-dump', (event) => {
+    this.$.materialDump.addEventListener('change-dump', async (event) => {
         const dump = event.target.dump;
 
-        let passIndex = 0;
-        for (let element of event.path) {
-            if (element instanceof HTMLElement && element.hasAttribute('pass-index')) {
-                passIndex = Number(element.getAttribute('pass-index'));
-                break;
-            }
-        }
+        // // show its children
+        // if (dump && dump.childMap && dump.children.length && event.target.$children) {
+        //     if (dump.value) {
+        //         event.target.$children.removeAttribute('hidden');
+        //     } else {
+        //         event.target.$children.setAttribute('hidden', '');
+        //     }
+        // }
 
-        this.storeCache(dump, passIndex);
+        this.storeCache(dump);
         this.change();
-    });
-
-    this.$.materialDump.addEventListener('confirm-dump', () => {
-        this.snapshot();
     });
 
     this.$.custom.addEventListener('change', () => {
         this.change();
-    });
-
-    this.$.custom.addEventListener('snapshot', () => {
-        this.snapshot();
     });
 };
 

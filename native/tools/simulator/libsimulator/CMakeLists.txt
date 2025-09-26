@@ -93,6 +93,7 @@ libsimulator_source_files(
     lib/runtime/VisibleRect.h
 )
 libsimulator_source_files(
+    lib/CustomAppEvent.cpp
     lib/CustomAppEvent.h
     lib/AppLang.cpp
     lib/AppLang.h

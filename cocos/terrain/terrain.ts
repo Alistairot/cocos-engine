@@ -1,17 +1,18 @@
 /*
- Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2020 Xiamen Yaji Software Co., Ltd.
 
  https://www.cocos.com/
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -20,36 +21,32 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
-*/
+ */
 
 import { ccclass, disallowMultiple, executeInEditMode, help, visible, type, serializable, editable, disallowAnimation } from 'cc.decorator';
-import { builtinResMgr } from '../asset/asset-manager';
-import { ModelRenderer } from '../misc/model-renderer';
-import { EffectAsset, Texture2D } from '../asset/assets';
-import { Filter, PixelFormat, WrapMode } from '../asset/assets/asset-enum';
-import { Material } from '../asset/assets/material';
-import { RenderingSubMesh } from '../asset/assets/rendering-sub-mesh';
-import { Component } from '../scene-graph/component';
+import { JSB } from 'internal:constants';
+import { builtinResMgr } from '../core/builtin';
+import { ModelRenderer } from '../core/components/model-renderer';
+import { EffectAsset, Texture2D } from '../core/assets';
+import { Filter, PixelFormat, WrapMode } from '../core/assets/asset-enum';
+import { Material } from '../core/assets/material';
+import { RenderingSubMesh } from '../core/assets/rendering-sub-mesh';
+import { Component } from '../core/components';
 import { CCObject, isValid } from '../core/data/object';
-import { director } from '../game/director';
-import { AttributeName, BufferUsageBit, Format, MemoryUsageBit, PrimitiveMode, Attribute, Buffer, BufferInfo, deviceManager } from '../gfx';
+import { director } from '../core/director';
+import { AttributeName, BufferUsageBit, Format, MemoryUsageBit, PrimitiveMode, Attribute, Buffer, BufferInfo, deviceManager } from '../core/gfx';
 import { clamp, Rect, Size, Vec2, Vec3, Vec4 } from '../core/math';
-import { MacroRecord } from '../render-scene/core/pass-utils';
-import { Pass, scene } from '../render-scene';
-import { Camera } from '../render-scene/scene/camera';
-import { Root } from '../root';
+import { MacroRecord } from '../core/renderer/core/pass-utils';
+import { Pass, scene } from '../core/renderer';
+import { Camera } from '../core/renderer/scene/camera';
+import { Root } from '../core/root';
 import { HeightField } from './height-field';
 import { legacyCC } from '../core/global-exports';
 import { TerrainLod, TerrainLodKey, TERRAIN_LOD_LEVELS, TERRAIN_LOD_MAX_DISTANCE } from './terrain-lod';
 import { TerrainAsset, TerrainLayerInfo, TERRAIN_HEIGHT_BASE, TERRAIN_HEIGHT_FACTORY,
     TERRAIN_BLOCK_TILE_COMPLEXITY, TERRAIN_BLOCK_VERTEX_SIZE, TERRAIN_BLOCK_VERTEX_COMPLEXITY,
     TERRAIN_MAX_LAYER_COUNT, TERRAIN_HEIGHT_FMIN, TERRAIN_HEIGHT_FMAX, TERRAIN_MAX_BLEND_LAYERS, TERRAIN_DATA_VERSION5 } from './terrain-asset';
-import { CCFloat } from '../core';
-import { PipelineEventType } from '../rendering';
-import { MobilityMode, Node } from '../scene-graph';
-
-// the same as dependentAssets: legacy/terrain.effect
-const TERRAIN_EFFECT_UUID = '1d08ef62-a503-4ce2-8b9a-46c90873f7d3';
+import { CCBoolean, CCFloat, CCInteger, Node, PipelineEventType } from '../core';
 
 /**
  * @en Terrain info
@@ -223,11 +220,6 @@ class TerrainRenderable extends ModelRenderer {
             legacyCC.director.root.destroyModel(this._model);
             this._model = null;
         }
-
-        if (this._meshData != null) {
-            this._meshData.destroy();
-            this._meshData = null;
-        }
     }
 
     /**
@@ -293,19 +285,6 @@ class TerrainRenderable extends ModelRenderer {
         return false;
     }
 
-     /**
-     * @deprecated since v3.5.0, this is an engine private interface that will be removed in the future.
-     */
-    public _updateLightingmap (texture: Texture2D | null, uvParam: Vec4) {
-        if (this._model == null) {
-            return;
-        }
-
-        this._lightmap = texture;
-        this._updateReceiveDirLight();
-        this._model.updateLightingmap(texture, uvParam);
-    }
-
     /**
      * @deprecated since v3.5.0, this is an engine private interface that will be removed in the future.
      */
@@ -328,34 +307,6 @@ class TerrainRenderable extends ModelRenderer {
         }
 
         this._onMaterialModified(0, null);
-    }
-
-    protected _onUpdateReceiveDirLight (visibility: number, forceClose = false) {
-        if (!this._model) { return; }
-        if (forceClose) {
-            this._model.receiveDirLight = false;
-            return;
-        }
-        if (this.node && ((visibility & this.node.layer) === this.node.layer)
-        || (visibility & this._model.visFlags)) {
-            this._model.receiveDirLight = true;
-        } else {
-            this._model.receiveDirLight = false;
-        }
-    }
-
-    protected _updateReceiveDirLight () {
-        const scene = this.node.scene;
-        if (!scene || !scene.renderScene) { return; }
-        const mainLight = scene.renderScene.mainLight;
-        if (!mainLight) { return; }
-        const visibility = mainLight.visibility;
-        if (!mainLight.node) { return; }
-        if (mainLight.node.mobility === MobilityMode.Static && this._lightmap) {
-            this._onUpdateReceiveDirLight(visibility, true);
-        } else {
-            this._onUpdateReceiveDirLight(visibility);
-        }
     }
 
     private _getBuiltinMaterial () {
@@ -488,10 +439,6 @@ export class TerrainBlock {
 
     public update () {
         this._updateMaterial(false);
-
-        if (this.lightmap !== this._renderable._lightmap) {
-            this._renderable._updateLightingmap(this.lightmap, this.lightmapUVParam);
-        }
 
         const useNormalMap = this._terrain.useNormalMap;
         const usePBR = this._terrain.usePBR;
@@ -634,13 +581,18 @@ export class TerrainBlock {
                 mtl.setProperty('roughness', roughness);
                 mtl.setProperty('metallic', metallic);
             }
+
+            if (this._renderable._model && this.lightmap !== this._renderable._lightmap) {
+                this._renderable._lightmap = this.lightmap;
+                this._renderable._model?.updateLightingmap(this.lightmap, this.lightmapUVParam);
+            }
         }
     }
 
     /**
      * @engineInternal
      */
-    public _buildLodInfo () {
+    public _buildLodInfo() {
         const vertexData = new Float32Array(TERRAIN_BLOCK_VERTEX_SIZE * TERRAIN_BLOCK_VERTEX_COMPLEXITY * TERRAIN_BLOCK_VERTEX_COMPLEXITY);
         this._buildVertexData(vertexData);
         // update lod
@@ -851,15 +803,9 @@ export class TerrainBlock {
     }
 
     public _getMaterialDefines (nlayers: number): MacroRecord {
-        let lightmapMacroValue = 1; /*static*/
-        if (this._terrain.node && this._terrain.node.scene) {
-            if (this._terrain.node.scene.globals.bakedWithStationaryMainLight) {
-                lightmapMacroValue = 2; /*stationary*/
-            }
-        }
         return {
             LAYERS: nlayers + 1,
-            CC_USE_LIGHTMAP: this.lightmap !== null ? lightmapMacroValue : 0,
+            CC_USE_LIGHTMAP: this.lightmap !== null ? 1 : 0,
             USE_NORMALMAP: this._terrain.useNormalMap ? 1 : 0,
             USE_PBR: this._terrain.usePBR ? 1 : 0,
             // CC_RECEIVE_SHADOW: this._terrain.receiveShadow ? 1 : 0,
@@ -876,8 +822,6 @@ export class TerrainBlock {
             if (this.lightmap !== null) {
                 this.lightmap.setWrapMode(WrapMode.CLAMP_TO_BORDER, WrapMode.CLAMP_TO_BORDER);
             }
-
-            this._renderable._updateLightingmap(this.lightmap, this.lightmapUVParam);
         }
     }
 
@@ -1202,18 +1146,22 @@ export class Terrain extends Component {
     @disallowAnimation
     protected _lightmapInfos: TerrainBlockLightmapInfo[] = [];
 
+    @type(CCBoolean)
     @serializable
     @disallowAnimation
     protected _receiveShadow = false;
 
+    @type(CCBoolean)
     @serializable
     @disallowAnimation
     protected _useNormalmap = false;
 
+    @type(CCBoolean)
     @serializable
     @disallowAnimation
     protected _usePBR = false;
 
+    @type(CCBoolean)
     @serializable
     @disallowAnimation
     protected _lodEnable = false;
@@ -1224,7 +1172,7 @@ export class Terrain extends Component {
     protected _lodBias = 0;
 
     // when the terrain undo, __asset is changed by serialize, but the internal block is created by last asset, here saved last asset
-    protected _buitinAsset: TerrainAsset|null = null;
+    protected _buitinAsset : TerrainAsset|null = null;
     protected _tileSize = 1;
     protected _blockCount: number[] = [1, 1];
     protected _weightMapSize = 128;
@@ -1679,7 +1627,7 @@ export class Terrain extends Component {
 
     public getEffectAsset () {
         if (this._effectAsset === null) {
-            return legacyCC.EffectAsset.get(TERRAIN_EFFECT_UUID) as EffectAsset;
+            return legacyCC.EffectAsset.get('builtin-terrain') as EffectAsset;
         }
 
         return this._effectAsset;
@@ -1717,9 +1665,6 @@ export class Terrain extends Component {
 
         if (this._sharedIndexBuffer != null) {
             this._sharedIndexBuffer.destroy();
-        }
-        if (this._sharedLodIndexBuffer != null) {
-            this._sharedLodIndexBuffer.destroy();
         }
     }
 
@@ -2265,10 +2210,6 @@ export class Terrain extends Component {
             return this._sharedIndexBuffer;
         }
 
-        if (this.lodEnable && this._lod === null) {
-            this._lod = new TerrainLod();
-        }
-
         if (this._lod !== null) {
             this._sharedLodIndexBuffer = this._createSharedIndexBuffer();
             return this._sharedLodIndexBuffer;
@@ -2305,17 +2246,6 @@ export class Terrain extends Component {
      * @deprecated since v3.5.0, this is an engine private interface that will be removed in the future.
      */
     public _updateLightmap (blockId: number, tex: Texture2D|null, uOff: number, vOff: number, uScale: number, vScale: number) {
-        if (tex) {
-            // ensure the lightmap infos is initialized
-            if (this._lightmapInfos.length == 0) {
-                for (let i = 0; i < this._blockCount[0] * this._blockCount[1]; ++i) {
-                    this._lightmapInfos.push(new TerrainBlockLightmapInfo());
-                }
-            }
-        } else if (this._lightmapInfos.length == 0) {
-            return;
-        }
-
         this._lightmapInfos[blockId].texture = tex;
         this._lightmapInfos[blockId].UOff = uOff;
         this._lightmapInfos[blockId].VOff = vOff;
@@ -2532,7 +2462,7 @@ export class Terrain extends Component {
             return false;
         }
 
-        const layerBuffer: number[] = [];
+        const layerBuffer:number[] = [];
         layerBuffer.length = info.blockCount[0] * info.blockCount[1] * TERRAIN_MAX_BLEND_LAYERS;
         for (let i = 0; i < layerBuffer.length; ++i) {
             layerBuffer[i] = -1;

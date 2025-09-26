@@ -1,17 +1,18 @@
 /*
- Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2020 Xiamen Yaji Software Co., Ltd.
 
  https://www.cocos.com/
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -20,19 +21,23 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
-*/
+ */
 
-import { Vec3, RecyclePool, error, js, IVec3Like, geometry } from '../../core';
+import { Vec3 } from '../../core/math';
 import { PhysicsRayResult } from '../framework/physics-ray-result';
 import { BuiltinSharedBody } from './builtin-shared-body';
 import { BuiltinShape } from './shapes/builtin-shape';
 import { ArrayCollisionMatrix } from '../utils/array-collision-matrix';
+import { ObjectCollisionMatrix } from '../utils/object-collision-matrix';
+import { Ray, intersect } from '../../core/geometry';
+import { RecyclePool, Node, error } from '../../core';
 import { IPhysicsWorld, IRaycastOptions } from '../spec/i-physics-world';
+import { IVec3Like } from '../../core/math/type-define';
 import { PhysicsMaterial } from '../framework/assets/physics-material';
 import { TriggerEventType } from '../framework/physics-interface';
 import { Collider } from '../../../exports/physics-framework';
 import { BuiltinRigidBody } from './builtin-rigid-body';
-import { Node } from '../../scene-graph';
+import { fastRemoveAt } from '../../core/utils/array';
 
 const hitPoint = new Vec3();
 const TriggerEventObject = {
@@ -100,7 +105,7 @@ export class BuiltInWorld implements IPhysicsWorld {
         this.emitTriggerEvent();
     }
 
-    raycastClosest (worldRay: geometry.Ray, options: IRaycastOptions, out: PhysicsRayResult): boolean {
+    raycastClosest (worldRay: Ray, options: IRaycastOptions, out: PhysicsRayResult): boolean {
         let tmp_d = Infinity;
         const max_d = options.maxDistance;
         const mask = options.mask;
@@ -109,7 +114,7 @@ export class BuiltInWorld implements IPhysicsWorld {
             if (!(body.collisionFilterGroup & mask)) continue;
             for (let i = 0; i < body.shapes.length; i++) {
                 const shape = body.shapes[i];
-                const distance = geometry.intersect.resolve(worldRay, shape.worldShape);
+                const distance = intersect.resolve(worldRay, shape.worldShape);
                 if (distance === 0 || distance > max_d) {
                     continue;
                 }
@@ -125,7 +130,7 @@ export class BuiltInWorld implements IPhysicsWorld {
         return !(tmp_d === Infinity);
     }
 
-    raycast (worldRay: geometry.Ray, options: IRaycastOptions, pool: RecyclePool<PhysicsRayResult>, results: PhysicsRayResult[]): boolean {
+    raycast (worldRay: Ray, options: IRaycastOptions, pool: RecyclePool<PhysicsRayResult>, results: PhysicsRayResult[]): boolean {
         const max_d = options.maxDistance;
         const mask = options.mask;
         for (let i = 0; i < this.bodies.length; i++) {
@@ -133,7 +138,7 @@ export class BuiltInWorld implements IPhysicsWorld {
             if (!(body.collisionFilterGroup & mask)) continue;
             for (let i = 0; i < body.shapes.length; i++) {
                 const shape = body.shapes[i];
-                const distance = geometry.intersect.resolve(worldRay, shape.worldShape);
+                const distance = intersect.resolve(worldRay, shape.worldShape);
                 if (distance === 0 || distance > max_d) {
                     continue;
                 } else {
@@ -161,7 +166,7 @@ export class BuiltInWorld implements IPhysicsWorld {
     removeSharedBody (body: BuiltinSharedBody) {
         const index = this.bodies.indexOf(body);
         if (index >= 0) {
-            js.array.fastRemoveAt(this.bodies, index);
+            fastRemoveAt(this.bodies, index);
         }
     }
 

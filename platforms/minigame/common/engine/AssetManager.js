@@ -1,5 +1,4 @@
 const cacheManager = require('./cache-manager');
-
 const { fs, downloadFile, readText, readArrayBuffer, readJson, loadSubpackage, getUserDataPath, exists } = window.fsUtils;
 
 const REGEX = /^https?:\/\/.*/;
@@ -9,46 +8,45 @@ const parser = cc.assetManager.parser;
 const presets = cc.assetManager.presets;
 downloader.maxConcurrency = 8;
 downloader.maxRequestsPerFrame = 64;
-presets.scene.maxConcurrency = 10;
-presets.scene.maxRequestsPerFrame = 64;
+presets['scene'].maxConcurrency = 10;
+presets['scene'].maxRequestsPerFrame = 64;
 
-const subpackages = {};
+let subpackages = {};
 
 const sys = cc.sys;
 if (sys.platform === sys.Platform.BAIDU_MINI_GAME) {
     require = __baiduRequire;
 }
-if (sys.platform === sys.Platform.TAOBAO_MINI_GAME) {
-    require = globalThis.__taobaoRequire;
-}
 
 function downloadScript (url, options, onComplete) {
     if (REGEX.test(url)) {
         onComplete && onComplete(new Error('Can not load remote scripts'));
-    } else {
-        if (sys.platform === sys.Platform.TAOBAO_MINI_GAME) {
-            require(`../../../${url}`);
-        } else if (sys.platform !== sys.Platform.TAOBAO_CREATIVE_APP) { //Can't load scripts dynamically on Taobao platform
-            require(`../../../${url}`);
+    }
+    else {
+        //TODO: Can't load scripts dynamically on Taobao platform
+        if (sys.platform !== sys.Platform.TAOBAO_CREATIVE_APP) {
+            require('../../../' + url);
         }
         onComplete && onComplete(null);
     }
 }
 
 function handleZip (url, options, onComplete) {
-    const cachedUnzip = cacheManager.cachedFiles.get(url);
+    let cachedUnzip = cacheManager.cachedFiles.get(url);
     if (cachedUnzip) {
         cacheManager.updateLastTime(url);
         onComplete && onComplete(null, cachedUnzip.url);
-    } else if (REGEX.test(url)) {
-        downloadFile(url, null, options.header, options.onFileProgress, (err, downloadedZipPath) => {
+    }
+    else if (REGEX.test(url)) {
+        downloadFile(url, null, options.header, options.onFileProgress, function (err, downloadedZipPath) {
             if (err) {
                 onComplete && onComplete(err);
                 return;
             }
             cacheManager.unzipAndCacheBundle(url, downloadedZipPath, options.__cacheBundleRoot__, onComplete);
         });
-    } else {
+    }
+    else {
         cacheManager.unzipAndCacheBundle(url, url, options.__cacheBundleRoot__, onComplete);
     }
 }
@@ -57,7 +55,7 @@ function loadInnerAudioContext (url) {
     return new Promise((resolve, reject) => {
         const nativeAudio = __globalAdapter.createInnerAudioContext();
 
-        const timer = setTimeout(() => {
+        let timer = setTimeout(() => {
             clearEvent();
             resolve(nativeAudio);
         }, 8000);
@@ -73,7 +71,7 @@ function loadInnerAudioContext (url) {
         function fail () {
             clearEvent();
             clearTimeout(timer);
-            reject(`failed to load innerAudioContext: ${err}`);
+            reject('failed to load innerAudioContext: ' + err);
         }
         nativeAudio.onCanplay(success);
         nativeAudio.onError(fail);
@@ -82,7 +80,7 @@ function loadInnerAudioContext (url) {
 }
 
 function loadAudioPlayer (url, options, onComplete) {
-    cc.AudioPlayer.load(url).then((player) => {
+    cc.AudioPlayer.load(url).then(player => {
         const audioMeta = {
             player,
             url,
@@ -90,30 +88,32 @@ function loadAudioPlayer (url, options, onComplete) {
             type: player.type,
         };
         onComplete(null, audioMeta);
-    }).catch((err) => {
+    }).catch(err => {
         onComplete(err);
     });
 }
 
 function download (url, func, options, onFileProgress, onComplete) {
-    const result = transformUrl(url, options);
+    var result = transformUrl(url, options);
     if (result.inLocal) {
         func(result.url, options, onComplete);
-    } else if (result.inCache) {
+    }
+    else if (result.inCache) {
         cacheManager.updateLastTime(url);
-        func(result.url, options, (err, data) => {
+        func(result.url, options, function (err, data) {
             if (err) {
                 cacheManager.removeCache(url);
             }
             onComplete(err, data);
         });
-    } else {
-        downloadFile(url, null, options.header, onFileProgress, (err, path) => {
+    }
+    else {
+        downloadFile(url, null, options.header, onFileProgress, function (err, path) {
             if (err) {
                 onComplete(err, null);
                 return;
             }
-            func(path, options, (err, data) => {
+            func(path, options, function (err, data) {
                 if (!err) {
                     cacheManager.tempFiles.add(url, path);
                     cacheManager.cacheFile(url, path, options.cacheEnabled, options.__cacheBundleRoot__, true);
@@ -149,14 +149,14 @@ function downloadArrayBuffer (url, options, onComplete) {
 }
 
 function loadFont (url, options, onComplete) {
-    const fontFamily = __globalAdapter.loadFont(url);
+    var fontFamily = __globalAdapter.loadFont(url);
     onComplete(null, fontFamily || 'Arial');
 }
 
 function doNothing (content, options, onComplete) {
     exists(content, (existence) => {
         if (existence) {
-            onComplete(null, content);
+            onComplete(null, content); 
         } else {
             onComplete(new Error(`file ${content} does not exist!`));
         }
@@ -208,120 +208,107 @@ const downloadCCONB = (url, options, onComplete) => {
 };
 
 function downloadBundle (nameOrUrl, options, onComplete) {
-    const bundleName = cc.path.basename(nameOrUrl);
-    const version = options.version || cc.assetManager.downloader.bundleVers[bundleName];
-    const suffix = version ? `${version}.` : '';
-
-    function getConfigPathForSubPackage () {
-        if (sys.platform === sys.Platform.TAOBAO_MINI_GAME) {
-            return `${bundleName}/config.${suffix}json`;
-        }
-        return `subpackages/${bundleName}/config.${suffix}json`;
-    }
-
-    function appendBaseToJsonData (data) {
-        if (!data) return;
-
-        if (sys.platform === sys.Platform.TAOBAO_MINI_GAME) {
-            data.base = `${bundleName}/`;
-        } else {
-            data.base = `subpackages/${bundleName}/`;
-        }
-    }
+    let bundleName = cc.path.basename(nameOrUrl);
+    let version = options.version || cc.assetManager.downloader.bundleVers[bundleName];
+    let suffix = version ? version + '.' : '';
 
     if (subpackages[bundleName]) {
-        const config = getConfigPathForSubPackage();
-        loadSubpackage(bundleName, options.onFileProgress, (err) => {
+        var config = `subpackages/${bundleName}/config.${suffix}json`;
+        loadSubpackage(bundleName, options.onFileProgress, function (err) {
             if (err) {
                 onComplete(err, null);
                 return;
             }
-            downloadJson(config, options, (err, data) => {
-                appendBaseToJsonData(data);
+            downloadJson(config, options, function (err, data) {
+                data && (data.base = `subpackages/${bundleName}/`);
                 onComplete(err, data);
             });
         });
-    } else {
-        let js; let url;
+    }
+    else {
+        let js, url;
         if (REGEX.test(nameOrUrl) || nameOrUrl.startsWith(getUserDataPath())) {
             url = nameOrUrl;
             js = `src/bundle-scripts/${bundleName}/index.${suffix}js`;
             cacheManager.makeBundleFolder(bundleName);
-        } else if (downloader.remoteBundles.indexOf(bundleName) !== -1) {
-            url = `${downloader.remoteServerAddress}remote/${bundleName}`;
-            js = `src/bundle-scripts/${bundleName}/index.${suffix}js`;
-            cacheManager.makeBundleFolder(bundleName);
-        } else {
-            url = `assets/${bundleName}`;
-            js = `assets/${bundleName}/index.${suffix}js`;
         }
-
-        if (sys.platform === sys.Platform.TAOBAO_MINI_GAME) {
-            require(js);
-        } else if (sys.platform !== sys.Platform.TAOBAO_CREATIVE_APP) { // Can't load scripts dynamically on Taobao platform
-            require(`./${js}`);
+        else {
+            if (downloader.remoteBundles.indexOf(bundleName) !== -1) {
+                url = `${downloader.remoteServerAddress}remote/${bundleName}`;
+                js = `src/bundle-scripts/${bundleName}/index.${suffix}js`;
+                cacheManager.makeBundleFolder(bundleName);
+            }
+            else {
+                url = `assets/${bundleName}`;
+                js = `assets/${bundleName}/index.${suffix}js`;
+            }
+        }
+        //TODO: Can't load scripts dynamically on Taobao platform
+        if (sys.platform !== sys.Platform.TAOBAO_CREATIVE_APP) {
+            require('./' + js);
         }
         options.__cacheBundleRoot__ = bundleName;
-        const config = `${url}/config.${suffix}json`;
-        downloadJson(config, options, (err, data) => {
+        var config = `${url}/config.${suffix}json`;
+        downloadJson(config, options, function (err, data) {
             if (err) {
                 onComplete && onComplete(err);
                 return;
             }
             if (data.isZip) {
-                const zipVersion = data.zipVersion;
-                const zipUrl = `${url}/res.${zipVersion ? `${zipVersion}.` : ''}zip`;
-                handleZip(zipUrl, options, (err, unzipPath) => {
+                let zipVersion = data.zipVersion;
+                let zipUrl = `${url}/res.${zipVersion ? zipVersion + '.' : ''}zip`;
+                handleZip(zipUrl, options, function (err, unzipPath) {
                     if (err) {
                         onComplete && onComplete(err);
                         return;
                     }
-                    data.base = `${unzipPath}/res/`;
+                    data.base = unzipPath + '/res/';
                     // PATCH: for android alipay version before v10.1.95 (v10.1.95 included)
                     // to remove in the future
                     if (sys.platform === sys.Platform.ALIPAY_MINI_GAME && sys.os === sys.OS.ANDROID) {
-                        const resPath = `${unzipPath}res/`;
-                        if (fs.accessSync({ path: resPath })) {
+                        let resPath = unzipPath + 'res/';
+                        if (fs.accessSync({path: resPath})) {
                             data.base = resPath;
                         }
                     }
                     onComplete && onComplete(null, data);
                 });
-            } else {
-                data.base = `${url}/`;
+            }
+            else {
+                data.base = url + '/';
                 onComplete && onComplete(null, data);
             }
         });
     }
-}
+};
 
 const originParsePVRTex = parser.parsePVRTex;
-const parsePVRTex = function (file, options, onComplete) {
-    readArrayBuffer(file, (err, data) => {
+let parsePVRTex = function (file, options, onComplete) {
+    readArrayBuffer(file, function (err, data) {
         if (err) return onComplete(err);
         originParsePVRTex(data, options, onComplete);
     });
 };
 
 const originParsePKMTex = parser.parsePKMTex;
-const parsePKMTex = function (file, options, onComplete) {
-    readArrayBuffer(file, (err, data) => {
+let parsePKMTex = function (file, options, onComplete) {
+    readArrayBuffer(file, function (err, data) {
         if (err) return onComplete(err);
         originParsePKMTex(data, options, onComplete);
     });
 };
 
 const originParseASTCTex = parser.parseASTCTex;
-const parseASTCTex = function (file, options, onComplete) {
-    readArrayBuffer(file, (err, data) => {
+let parseASTCTex = function (file, options, onComplete) {
+    readArrayBuffer(file, function (err, data) {
         if (err) return onComplete(err);
         originParseASTCTex(data, options, onComplete);
     });
 };
 
 const originParsePlist = parser.parsePlist;
-const parsePlist = function (url, options, onComplete) {
-    readText(url, (err, file) => {
+let parsePlist = function (url, options, onComplete) {
+    readText(url, function (err, file) {
         if (err) return onComplete(err);
         originParsePlist(file, options, onComplete);
     });
@@ -334,24 +321,24 @@ parser.parseASTCTex = parseASTCTex;
 parser.parsePlist = parsePlist;
 
 downloader.register({
-    '.js': downloadScript,
+    '.js' : downloadScript,
 
     // Audio
-    '.mp3': downloadAsset,
-    '.ogg': downloadAsset,
-    '.wav': downloadAsset,
-    '.m4a': downloadAsset,
+    '.mp3' : downloadAsset,
+    '.ogg' : downloadAsset,
+    '.wav' : downloadAsset,
+    '.m4a' : downloadAsset,
 
     // Image
-    '.png': downloadAsset,
-    '.jpg': downloadAsset,
-    '.bmp': downloadAsset,
-    '.jpeg': downloadAsset,
-    '.gif': downloadAsset,
-    '.ico': downloadAsset,
-    '.tiff': downloadAsset,
-    '.image': downloadAsset,
-    '.webp': downloadAsset,
+    '.png' : downloadAsset,
+    '.jpg' : downloadAsset,
+    '.bmp' : downloadAsset,
+    '.jpeg' : downloadAsset,
+    '.gif' : downloadAsset,
+    '.ico' : downloadAsset,
+    '.tiff' : downloadAsset,
+    '.image' : downloadAsset,
+    '.webp' : downloadAsset,
     '.pvr': downloadAsset,
     '.pkm': downloadAsset,
     '.astc': downloadAsset,
@@ -367,21 +354,21 @@ downloader.register({
     '.cconb': downloadCCONB,
 
     // Txt
-    '.txt': downloadAsset,
-    '.xml': downloadAsset,
-    '.vsh': downloadAsset,
-    '.fsh': downloadAsset,
-    '.atlas': downloadAsset,
+    '.txt' : downloadAsset,
+    '.xml' : downloadAsset,
+    '.vsh' : downloadAsset,
+    '.fsh' : downloadAsset,
+    '.atlas' : downloadAsset,
 
-    '.tmx': downloadAsset,
-    '.tsx': downloadAsset,
-    '.plist': downloadAsset,
-    '.fnt': downloadAsset,
+    '.tmx' : downloadAsset,
+    '.tsx' : downloadAsset,
+    '.plist' : downloadAsset,
+    '.fnt' : downloadAsset,
 
-    '.json': downloadJson,
-    '.ExportJson': downloadAsset,
+    '.json' : downloadJson,
+    '.ExportJson' : downloadAsset,
 
-    '.binary': downloadAsset,
+    '.binary' : downloadAsset,
     '.bin': downloadAsset,
     '.dbbin': downloadAsset,
     '.skel': downloadAsset,
@@ -394,21 +381,21 @@ downloader.register({
     '.rm': downloadAsset,
     '.rmvb': downloadAsset,
 
-    bundle: downloadBundle,
+    'bundle': downloadBundle,
 
-    default: downloadText,
+    'default': downloadText,
 });
 
 parser.register({
-    '.png': downloader.downloadDomImage,
-    '.jpg': downloader.downloadDomImage,
-    '.bmp': downloader.downloadDomImage,
-    '.jpeg': downloader.downloadDomImage,
-    '.gif': downloader.downloadDomImage,
-    '.ico': downloader.downloadDomImage,
-    '.tiff': downloader.downloadDomImage,
-    '.image': downloader.downloadDomImage,
-    '.webp': downloader.downloadDomImage,
+    '.png' : downloader.downloadDomImage,
+    '.jpg' : downloader.downloadDomImage,
+    '.bmp' : downloader.downloadDomImage,
+    '.jpeg' : downloader.downloadDomImage,
+    '.gif' : downloader.downloadDomImage,
+    '.ico' : downloader.downloadDomImage,
+    '.tiff' : downloader.downloadDomImage,
+    '.image' : downloader.downloadDomImage,
+    '.webp' : downloader.downloadDomImage,
     '.pvr': parsePVRTex,
     '.pkm': parsePKMTex,
     '.astc': parseASTCTex,
@@ -421,66 +408,70 @@ parser.register({
     '.ttc': loadFont,
 
     // Audio
-    '.mp3': loadAudioPlayer,
-    '.ogg': loadAudioPlayer,
-    '.wav': loadAudioPlayer,
-    '.m4a': loadAudioPlayer,
+    '.mp3' : loadAudioPlayer,
+    '.ogg' : loadAudioPlayer,
+    '.wav' : loadAudioPlayer,
+    '.m4a' : loadAudioPlayer,
 
     // Txt
-    '.txt': parseText,
-    '.xml': parseText,
-    '.vsh': parseText,
-    '.fsh': parseText,
-    '.atlas': parseText,
+    '.txt' : parseText,
+    '.xml' : parseText,
+    '.vsh' : parseText,
+    '.fsh' : parseText,
+    '.atlas' : parseText,
 
-    '.tmx': parseText,
-    '.tsx': parseText,
-    '.fnt': parseText,
-    '.plist': parsePlist,
+    '.tmx' : parseText,
+    '.tsx' : parseText,
+    '.fnt' : parseText,
+    '.plist' : parsePlist,
 
-    '.binary': parseArrayBuffer,
+    '.binary' : parseArrayBuffer,
     '.bin': parseArrayBuffer,
     '.dbbin': parseArrayBuffer,
     '.skel': parseArrayBuffer,
 
-    '.ExportJson': parseJson,
+    '.ExportJson' : parseJson,
 });
 
 function transformUrl (url, options) {
-    let inLocal = false;
-    let inCache = false;
-    const isInUserDataPath = url.startsWith(getUserDataPath());
+    var inLocal = false;
+    var inCache = false;
+    var isInUserDataPath = url.startsWith(getUserDataPath());
     if (isInUserDataPath) {
         inLocal = true;
-    } else if (REGEX.test(url)) {
+    }
+    else if (REGEX.test(url)) {
         if (!options.reload) {
-            const cache = cacheManager.cachedFiles.get(url);
+            var cache = cacheManager.cachedFiles.get(url);
             if (cache) {
                 inCache = true;
                 url = cache.url;
-            } else {
-                const tempUrl = cacheManager.tempFiles.get(url);
-                if (tempUrl) {
+            }
+            else {
+                var tempUrl = cacheManager.tempFiles.get(url);
+                if (tempUrl) { 
                     inLocal = true;
                     url = tempUrl;
                 }
             }
         }
-    } else {
+    }
+    else {
         inLocal = true;
     }
     return { url, inLocal, inCache };
 }
 
-cc.assetManager.transformPipeline.append((task) => {
-    const input = task.output = task.input;
-    for (let i = 0, l = input.length; i < l; i++) {
-        const item = input[i];
-        const options = item.options;
+cc.assetManager.transformPipeline.append(function (task) {
+    var input = task.output = task.input;
+    for (var i = 0, l = input.length; i < l; i++) {
+        var item = input[i];
+        var options = item.options;
         if (!item.config) {
             if (item.ext === 'bundle') continue;
             options.cacheEnabled = options.cacheEnabled !== undefined ? options.cacheEnabled : false;
-        } else {
+        }
+        else {
             options.__cacheBundleRoot__ = item.config.name;
         }
         if (item.ext === '.cconb') {
@@ -491,10 +482,12 @@ cc.assetManager.transformPipeline.append((task) => {
     }
 });
 
-const originInit = cc.assetManager.init;
+var originInit = cc.assetManager.init;
 cc.assetManager.init = function (options) {
     originInit.call(cc.assetManager, options);
     const subpacks = cc.settings.querySettings('assets', 'subpackages');
-    subpacks && subpacks.forEach((x) => subpackages[x] = `subpackages/${x}`);
+    subpacks && subpacks.forEach(x => subpackages[x] = 'subpackages/' + x);
     cacheManager.init();
 };
+
+

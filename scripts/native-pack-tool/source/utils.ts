@@ -428,12 +428,7 @@ export const toolHelper = {
     },
 
     runCmake(args: string[]) {
-        let cmakePath = Paths.cmakePath;
-        if (process.platform === 'win32' && cmakePath.indexOf(' ') > -1) {
-            cmakePath = `"${cmakePath}"`;
-        } else {
-            cmakePath = cmakePath.replace(/ /g, '\\ ');
-        }
+        const cmakePath = Paths.cmakePath;
         // Delete environment variables start with `npm_`, which may cause compile error on windows
         const newEnv: any = {};
         Object.assign(newEnv, process.env);
@@ -543,7 +538,7 @@ export class Paths {
         if (params.platform === 'windows') {
             this.platformTemplateDirName = params.platformParams.targetPlatform === "win32" ? "win32" : "win64";
         } else {
-            this.platformTemplateDirName = params.platformName ? params.platformName : this.platform;
+            this.platformTemplateDirName = this.platform;
         }
     }
 

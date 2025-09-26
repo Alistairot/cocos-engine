@@ -1,17 +1,18 @@
 /*
- Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2020 Xiamen Yaji Software Co., Ltd.
 
  https://www.cocos.com/
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -20,7 +21,7 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
-*/
+ */
 
 /* eslint-disable @typescript-eslint/ban-types */
 /* eslint-disable import/no-mutable-exports */
@@ -42,41 +43,41 @@ export function setDefaultLogTimes (times: number): void {
 }
 
 interface IReplacement {
-    /** Deprecated property name. */
+    /** 废弃属性的名称 */
     name: string;
-    /** Times to print log when accessing deprecated property. */
+    /** 警告的次数 */
     logTimes?: number;
-    /** New property name. */
+    /** 替换属性的名称 */
     newName?: string;
-    /** The object to deprecate this property. */
+    /** 废弃属性的所属对象 */
     target?: object;
-    /** The name of the object to deprecate this property. */
+    /** 废弃属性的所属对象的名称 */
     targetName?: string;
-    /** New function to access the property. If it is valid, `customSetter` and `customGetter` will be ignored. */
+    /** 自定义替换属性（函数） */
     customFunction?: Function;
-    /** New setter. */
+    /** 自定义替换属性的 setter */
     customSetter?: (v: any) => void;
-    /** New getter. */
+    /** 自定义替换属性的 getter */
     customGetter?: () => any;
-    /** Property description used in warning log. */
+    /** 额外建议 */
     suggest?: string;
 }
 
 interface IRemoveItem {
-    /** Removed property name. */
+    /** 废弃属性的名称 */
     name: string;
-    /** Times to print log when accessing removed property. */
+    /** 警告的次数 */
     logTimes?: number;
-    /** Property description used in warning log. */
+    /** 额外建议 */
     suggest?: string;
 }
 
 interface IMarkItem {
-    /** Deprecated property name. */
+    /** 废弃属性的名称 */
     name: string;
-    /** Times to print log when accessing deprecated property. */
+    /** 警告的次数 */
     logTimes?: number;
-    /** Property description used in warning log. */
+    /** 额外建议 */
     suggest?: string;
 }
 

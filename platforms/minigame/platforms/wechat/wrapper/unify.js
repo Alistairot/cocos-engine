@@ -2,12 +2,12 @@ const utils = require('./utils');
 
 window.__globalAdapter = window.__globalAdapter || {};
 if (window.__globalAdapter) {
-    const globalAdapter = window.__globalAdapter;
+    let globalAdapter = window.__globalAdapter;
     // SystemInfo
-    const systemInfo = wx.getSystemInfoSync();
-    const windowWidth = systemInfo.windowWidth;
-    const windowHeight = systemInfo.windowHeight;
-    const isLandscape = windowWidth > windowHeight;
+    let systemInfo = wx.getSystemInfoSync();
+    let windowWidth = systemInfo.windowWidth;
+    let windowHeight = systemInfo.windowHeight;
+    let isLandscape = windowWidth > windowHeight;
     globalAdapter.isSubContext = (wx.getOpenDataContext === undefined);
     globalAdapter.isDevTool = (systemInfo.platform === 'devtools');
     utils.cloneMethod(globalAdapter, wx, 'getSystemInfoSync');
@@ -20,7 +20,7 @@ if (window.__globalAdapter) {
 
     // Audio
     utils.cloneMethod(globalAdapter, wx, 'createInnerAudioContext');
-
+    
     // AudioInterruption Evnet
     utils.cloneMethod(globalAdapter, wx, 'onAudioInterruptionEnd');
     utils.cloneMethod(globalAdapter, wx, 'onAudioInterruptionBegin');
@@ -59,12 +59,6 @@ if (window.__globalAdapter) {
     utils.cloneMethod(globalAdapter, wx, 'onShow');
     utils.cloneMethod(globalAdapter, wx, 'onHide');
 
-    // wechat program use onAppShow/onAppHide
-    if (typeof getApp === 'function') {
-        wx.onShow = wx.onAppShow;
-        wx.onHide = wx.onAppHide;
-    }
-
     // onError
     utils.cloneMethod(globalAdapter, wx, 'onError');
     // offError
@@ -74,10 +68,11 @@ if (window.__globalAdapter) {
     let isAccelerometerInit = false;
     let deviceOrientation = 1;
     if (wx.onDeviceOrientationChange) {
-        wx.onDeviceOrientationChange((res) => {
+        wx.onDeviceOrientationChange(function (res) {
             if (res.value === 'landscape') {
             deviceOrientation = 1;
-            } else if (res.value === 'landscapeReverse') {
+            }
+            else if (res.value === 'landscapeReverse') {
             deviceOrientation = -1;
             }
         });
@@ -86,12 +81,12 @@ if (window.__globalAdapter) {
         startAccelerometer (cb) {
             if (!isAccelerometerInit) {
                 isAccelerometerInit = true;
-                wx.onAccelerometerChange && wx.onAccelerometerChange((res) => {
-                    const resClone = {};
+                wx.onAccelerometerChange && wx.onAccelerometerChange(function (res) {
+                    let resClone = {};
                     let x = res.x;
                     let y = res.y;
                     if (isLandscape) {
-                        const tmp = x;
+                        let tmp = x;
                         x = -y;
                         y = tmp;
                     }
@@ -101,7 +96,8 @@ if (window.__globalAdapter) {
                     resClone.z = res.z;
                     cb && cb(resClone);
                 });
-            } else {
+            }
+            else {
                 wx.startAccelerometer && wx.startAccelerometer({
                     fail (err) {
                         console.error('start accelerometer failed', err);

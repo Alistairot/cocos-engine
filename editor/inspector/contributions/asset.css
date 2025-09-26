@@ -44,22 +44,15 @@
     text-overflow: ellipsis;
     overflow: hidden;
     white-space: nowrap;
-    cursor: default;
 }
 
 :host > .container > .header > .name[readonly] {
     opacity: 0.55;
 }
 
-:host > .container > .header > .copy {
-    margin-left: 5px;
-    line-height: 26px;
-}
-
 :host > .container > .header > .help {
     display: none;
-    margin-left: 8px;
-    margin-right: 3px;
+    margin-right: 10px;
 }
 
 :host > .container > .header > .lock {
@@ -88,7 +81,6 @@
     display: flex;
     padding-top: 5px;
     flex: 1;
-    min-height: 0;
     flex-direction: column;
 }
 
@@ -100,7 +92,7 @@
 
 :host > .container > .content > .content-section {
     flex: 1;
-    overflow: scroll;
+    overflow: auto;
 }
 
 :host > .container > .content > section > ui-panel {
@@ -110,7 +102,10 @@
 
 :host > .container > .content > section > ui-panel:only-child {
     flex: 1;
-    min-height: 0;
+}
+
+:host > .container > .content > .content-footer {
+    margin-top: 10px;
 }
 
 :host([sub-type="material"]) > .container > .content,

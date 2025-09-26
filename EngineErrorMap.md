@@ -1838,28 +1838,11 @@ We don't currently support conversion of \`CubicSplineQuatValue\`.
 Instancing/Batching enabled for non-baked skinning model '%s', this may result in unexpected rendering artifacts. Consider turning it off in the material if you do not intend to do this.
 
 ### 3937
-
 Previous error occurred when instantiating animation clip %s on node %s.
 
 ### 3938
 
 '%s' is not found from '%s'. It's specified as the root node to play animation clip '%s'.
-
-### 3940
-
-Error when animation attempted to bind material uniform target: target %s is not a material.
-
-### 3941
-
-Error when animation attempted to bind material uniform target: material %s has no recorded pass %s.
-
-### 3942
-
-Error when animation attempted to bind material uniform target: material %s at pass %s has no recorded uniform %s.
-
-### 3943
-
-Error when animation attempted to bind material uniform target: material %s at pass %s's uniform %s has no recorded channel %s.
 
 ### 4000
 
@@ -1954,10 +1937,6 @@ Can not add a page without UITransform.
 ### 4302
 
 Can not set the scroll view content when it hasn't UITransform or its parent hasn't UITransform.
-
-### 4303
-
-The %s scrollBar on the '%s' node is not available, please check it.
 
 ### 4400
 
@@ -3227,14 +3206,6 @@ GeometryRenderer: too many lines.
 
 GeometryRenderer: too many triangles.
 
-### 12010
-
-PassUtils: illegal uniform handle, accessing uniform at offset %d
-
-### 12011
-
-Pass: setUniform is invoked with incompatible uniform data type for binding %d, expected type is %s
-
 ### 12100
 
 The font size is too big to be fitted into texture atlas. Please switch to other label cache modes or choose a smaller font size.
@@ -3340,11 +3311,3 @@ The effect('%s') you are looking for does not exist, please confirm the effect n
 ### 16201
 
 The asset replacing failed, can not found override asset('%s') for '%s' 
-
-### 16301
-
-node '%s' doesn't have any ModelRenderer component, this component will not work. please add ModelRenderer component first
-
-### 16302
-
-There is no reflection probe in the scene or no probe is near the current object. No reflection probe will take effect on this object. Please create a new reflection probe or move existing ones closer.

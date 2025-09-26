@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2021 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -20,7 +21,7 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
-****************************************************************************/
+ ****************************************************************************/
 
 #include "scene/Camera.h"
 #include "core/Root.h"
@@ -88,7 +89,6 @@ Camera::Camera(gfx::Device *device)
 Camera::~Camera() = default;
 
 bool Camera::initialize(const ICameraInfo &info) {
-    _usage = info.usage;
     _trackingType = info.trackingType;
     _cameraType = info.cameraType;
     _node = info.node;
@@ -147,14 +147,14 @@ void Camera::setFixedSize(uint32_t width, uint32_t height) {
 }
 
 // Editor specific gizmo camera logic
-void Camera::syncCameraEditor(const Camera *camera) {
+void Camera::syncCameraEditor(const Camera &camera) {
 #if CC_EDITOR
-    _position = camera->_position;
-    _forward = camera->_forward;
-    _matView = camera->_matView;
-    _matProj = camera->_matProj;
-    _matProjInv = camera->_matProjInv;
-    _matViewProj = camera->_matViewProj;
+    this->_position = camera._position;
+    this->_forward = camera._forward;
+    this->_matView = camera._matView;
+    this->_matProj = camera._matProj;
+    this->_matProjInv = camera._matProjInv;
+    this->_matViewProj = camera._matViewProj;
 #endif
 }
 
@@ -179,9 +179,6 @@ void Camera::update(bool forceUpdate /*false*/) {
     // projection matrix
     auto *swapchain = _window->getSwapchain();
     const auto &orientation = swapchain ? swapchain->getSurfaceTransform() : gfx::SurfaceTransform::IDENTITY;
-    if (swapchain) {
-        _systemWindowId = swapchain->getWindowId();
-    }
 
     if (_isProjDirty || _curTransform != orientation) {
         _curTransform = orientation;
@@ -204,15 +201,10 @@ void Camera::update(bool forceUpdate /*false*/) {
 
     if (_xr) {
         xr::XREye wndXREye = _xr->getXREyeByRenderWindow(_window);
-        if (wndXREye != xr::XREye::NONE && _xr->getXRConfig(xr::XRConfigKey::SESSION_RUNNING).getBool()) {
+        if (wndXREye != xr::XREye::NONE && _proj == CameraProjection::PERSPECTIVE && _xr->getXRConfig(xr::XRConfigKey::SESSION_RUNNING).getBool()) {
             // xr flow
-            if (_proj == CameraProjection::PERSPECTIVE) {
-                const auto &projFloat = _xr->getXRViewProjectionData(static_cast<uint32_t>(wndXREye), _nearClip, _farClip);
-                std::memcpy(_matProj.m, projFloat.data(), sizeof(float) * 16);
-            } else {
-                const ccstd::array<float, 4> &preTransform = PRE_TRANSFORMS[static_cast<int>(orientation)];
-                _xr->adaptOrthographicMatrix(this, preTransform, _matProj, _matView);
-            }
+            const auto &projFloat = _xr->getXRViewProjectionData(static_cast<uint32_t>(wndXREye), _nearClip, _farClip);
+            std::memcpy(_matProj.m, projFloat.data(), sizeof(float) * 16);
             _matProjInv = _matProj.getInversed();
             viewProjDirty = true;
         }
@@ -243,10 +235,6 @@ void Camera::changeTargetWindow(RenderWindow *window) {
         } else {
             resize(win->getWidth(), win->getHeight());
         }
-
-        if (swapchain) {
-            _systemWindowId = swapchain->getWindowId();
-        }
     }
 }
 
@@ -266,7 +254,7 @@ void Camera::detachCamera() {
 }
 
 geometry::Ray Camera::screenPointToRay(float x, float y) {
-    CC_ASSERT_NOT_NULL(_node);
+    CC_ASSERT(_node != nullptr);
     const float cx = _orientedViewport.x * static_cast<float>(_width);
     const float cy = _orientedViewport.y * static_cast<float>(_height);
     const float cw = _orientedViewport.z * static_cast<float>(_width);
@@ -381,29 +369,6 @@ Mat4 Camera::worldMatrixToScreen(const Mat4 &worldMatrix, uint32_t width, uint32
     out.multiply(tmpMat4);
 
     return out;
-}
-
-/**
-* @en Calculate and set oblique view frustum projection matrix.
-* @zh 计算并设置斜视锥体投影矩阵
-* @param clipPlane clip plane in camera space
-*/
-void Camera::calculateObliqueMat(const Vec4 &viewSpacePlane) {
-    float clipSpaceMinZ = _device->getCapabilities().clipSpaceMinZ;
-    Vec4 far{math::sgn(viewSpacePlane.x), math::sgn(viewSpacePlane.y), 1.F, 0.F};
-
-    _matProjInv.transformVector(&far);
-
-    const Vec4 m4 = {_matProj.m[3], _matProj.m[7], clipSpaceMinZ, _matProj.m[15]};
-    const float scale = 2.F / Vec4::dot(viewSpacePlane, far);
-    const Vec4 newViewSpaceNearPlane = viewSpacePlane * scale;
-
-    const Vec4 m3 = newViewSpaceNearPlane - m4;
-
-    _matProj.m[2] = m3.x;
-    _matProj.m[6] = m3.y;
-    _matProj.m[10] = m3.z;
-    _matProj.m[14] = m3.w;
 }
 
 void Camera::setNode(Node *val) { _node = val; }

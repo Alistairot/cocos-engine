@@ -14,8 +14,8 @@
  * limitations under the License.
  */
 
-#include "audio/common/utils/include/minifloat.h"
 #include <cmath>
+#include "audio/common/utils/include/minifloat.h"
 
 #define EXPONENT_BITS 3
 #define EXPONENT_MAX  ((1 << EXPONENT_BITS) - 1)
@@ -31,6 +31,8 @@
 #if EXPONENT_BITS + MANTISSA_BITS != 16
     #error EXPONENT_BITS and MANTISSA_BITS must sum to 16
 #endif
+
+
 
 gain_minifloat_t gain_from_float(float v) {
     if (std::isnan(v) || v <= 0.0f) {
@@ -57,3 +59,5 @@ float float_from_gain(gain_minifloat_t a) {
     return ldexpf((exponent > 0 ? HIDDEN_BIT | mantissa : mantissa << 1) / ONE_FLOAT,
                   exponent - EXCESS);
 }
+
+

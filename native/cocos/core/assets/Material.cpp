@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2021 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -28,6 +29,7 @@
 #include "core/Root.h"
 #include "core/assets/EffectAsset.h"
 #include "core/builtin/BuiltinResMgr.h"
+#include "core/event/EventTypesToJS.h"
 #include "core/platform/Debug.h"
 #include "math/Color.h"
 #include "renderer/pipeline/helper/Utils.h"
@@ -92,16 +94,16 @@ void Material::doDestroy() {
         }
     }
     passes.clear();
-    emit<PassesUpdated>();
+    emit(EventTypesToJS::MATERIAL_PASSES_UPDATED);
 }
 
 void Material::recompileShaders(const MacroRecord & /*overrides*/, index_t /*passIdx*/) {
-    CC_ABORT();
+    CC_ASSERT(false);
     CC_LOG_WARNING("Shaders in material asset '%s' cannot be modified at runtime, please instantiate the material first.", _name.c_str());
 }
 
 void Material::overridePipelineStates(const PassOverrides & /*overrides*/, index_t /*passIdx*/) {
-    CC_ABORT();
+    CC_ASSERT(false);
     CC_LOG_WARNING("Pipeline states in material asset '%s' cannot be modified at runtime, please instantiate the material first.", _name.c_str());
 }
 
@@ -302,7 +304,7 @@ void Material::update(bool keepProps /* = true*/) {
             }
         }
 
-        emit<PassesUpdated>();
+        emit(EventTypesToJS::MATERIAL_PASSES_UPDATED);
     }
     _hash = Material::getHashForMaterial(this);
 }
@@ -334,8 +336,8 @@ ccstd::vector<IntrusivePtr<scene::Pass>> Material::createPasses() {
         }
         passInfo.stateOverrides = _states[propIdx];
 
-        if (passInfo.propertyIndex.has_value()) {
-            utils::mergeToMap(defines, _defines[passInfo.propertyIndex.value()]);
+        if (passInfo.propertyIndex != CC_INVALID_INDEX) {
+            utils::mergeToMap(defines, _defines[passInfo.propertyIndex]);
         }
 
         if (passInfo.embeddedMacros.has_value()) {
@@ -375,7 +377,7 @@ bool Material::uploadProperty(scene::Pass *pass, const ccstd::string &name, cons
                 } else if (ccstd::holds_alternative<Vec4>(prop)) {
                     srgb = ccstd::get<Vec4>(prop);
                 } else {
-                    CC_ABORT();
+                    CC_ASSERT(false);
                 }
 
                 Vec4 linear;

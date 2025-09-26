@@ -1,7 +1,8 @@
-import { AnimationState } from '../../cocos/animation';
-import { CrossFade } from '../../cocos/animation/cross-fade';
-import { Playable } from '../../cocos/animation/playable';
-import { js } from '../../cocos/core';
+import { AnimationClip, AnimationState, Node } from '../../cocos/core';
+import { CrossFade } from '../../cocos/core/animation/cross-fade';
+import { Playable } from '../../cocos/core/animation/playable';
+import { assertIsTrue } from '../../cocos/core/data/utils/asserts';
+import { remove } from '../../cocos/core/utils/array';
 
 type CrossFadeScheduler = NonNullable<ConstructorParameters<typeof CrossFade>[0]>;
 
@@ -11,7 +12,7 @@ class Scheduler implements NonNullable<CrossFadeScheduler> {
     }
 
     public removeCrossFade(crossFade: CrossFade): void {
-        js.array.remove(this._crossFades, crossFade);
+        remove(this._crossFades, crossFade);
     }
 
     public update (deltaTime = 1.0 / 30.0) {

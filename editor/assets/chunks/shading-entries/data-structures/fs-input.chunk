@@ -17,8 +17,8 @@ void CCSurfacesGetFragmentInput(out SurfacesStandardFragmentInput fsInput)
 
 // Use macros instead of structure to avoid structure precision issues
 #define FSInput_worldPos v_worldPos
-#define FSInput_worldNormal v_normal.xyz // unnormalized
-#define FSInput_faceSideSign v_normal.w // physical face side, has no relation to USE_TWO_SIDED
+#define FSInput_worldNormal v_normal.xyz
+#define FSInput_faceSideSign v_normal.w
 #define FSInput_texcoord v_uv
 
 #if CC_SURFACES_USE_VERTEX_COLOR
@@ -28,14 +28,14 @@ void CCSurfacesGetFragmentInput(out SurfacesStandardFragmentInput fsInput)
 #endif
 
 #if CC_SURFACES_USE_TANGENT_SPACE
-  #define FSInput_worldTangent v_tangent.xyz // unnormalized
+  #define FSInput_worldTangent v_tangent.xyz
   #define FSInput_mirrorNormal v_tangent.w
 #else
   #define FSInput_worldTangent vec3(0.0, 0.0, 0.0)
   #define FSInput_mirrorNormal 1.0
 #endif
 
-#if CC_SURFACES_USE_SECOND_UV
+#if CC_SURFACES_USE_SECOND_UV && !CC_USE_LIGHTMAP
   #define FSInput_texcoord1 v_uv1
 #else
   #define FSInput_texcoord1 vec2(0.0, 0.0)
@@ -46,10 +46,7 @@ void CCSurfacesGetFragmentInput(out SurfacesStandardFragmentInput fsInput)
 #endif
 
 #if CC_RECEIVE_SHADOW
-  #define FSInput_shadowBias v_shadowBiasAndProbeId.xy
-#endif
-#if CC_USE_REFLECTION_PROBE
-  #define FSInput_reflectionProbeId v_shadowBiasAndProbeId.z
+  #define FSInput_shadowBias v_shadowBias
 #endif
 
 #if CC_USE_FOG != CC_FOG_NONE && !CC_USE_ACCURATE_FOG
@@ -58,8 +55,4 @@ void CCSurfacesGetFragmentInput(out SurfacesStandardFragmentInput fsInput)
 
 #if CC_SURFACES_TRANSFER_LOCAL_POS
   #define FSInput_localPos v_localPos
-#endif
-
-#if CC_SURFACES_TRANSFER_CLIP_POS
-  #define FSInput_clipPos v_clipPos
 #endif

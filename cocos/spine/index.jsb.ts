@@ -1,17 +1,18 @@
 /*
- Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2020 Xiamen Yaji Software Co., Ltd.
 
  https://www.cocos.com/
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -20,7 +21,7 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
-*/
+ */
 
 import { ccenum } from '../core';
 import { legacyCC } from '../core/global-exports';
@@ -47,16 +48,20 @@ export * from './skeleton';
 export * from './skeleton-data';
 export * from './assembler';
 
-export const spine = globalThis.spine;
+declare const window: any;
+export const spine = window.spine;
 export const VertexEffectDelegate = spine.VertexEffectDelegate;
-
 
 /**
  * @en
- * The attachment type of spine. It contains four types: REGION(0), BOUNDING_BOX(1), MESH(2) and SKINNED_MESH.
+ * The global time scale of Spine.
  * @zh
- * Attachment 类型枚举。类型包括 REGION，BOUNDING_BOX，MESH，SKINNED_MESH。
+ * Spine 全局时间缩放率。
+ * @example
+ * sp.timeScale = 0.8;
  */
+
+// The attachment type of spine. It contains three type: REGION(0), BOUNDING_BOX(1), MESH(2) and SKINNED_MESH.
 export enum ATTACHMENT_TYPE {
     REGION = 0,
     BOUNDING_BOX = 1,

@@ -28,13 +28,6 @@ System Requirements
 
 C++ related
 --------------------------------
-Use C++17.
-
-These C++17 features are tested and supported by all platforms
-  - `std::string_view`
-  - [`constexpr if`](https://www.codingame.com/playgrounds/2205/7-features-of-c17-that-will-simplify-your-code/constexpr-if)
-
-The following features are not supported
-  - `std::optional` is not supported by iOS 11.
-
-Other C++17 features are not tested.
+- use C++17, but can only use these C++17 features
+  - std::string_view
+  - [constexpr if](https://www.codingame.com/playgrounds/2205/7-features-of-c17-that-will-simplify-your-code/constexpr-if)

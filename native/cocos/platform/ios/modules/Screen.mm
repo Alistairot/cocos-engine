@@ -79,7 +79,7 @@ Screen::Orientation Screen::getDeviceOrientation() const {
             orientation = Orientation::PORTRAIT;
             break;
         default:
-            CC_ABORT();
+            CC_ASSERT(false);
             break;
     }
 

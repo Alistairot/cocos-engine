@@ -25,33 +25,18 @@
 package com.cocos.lib;
 
 import android.content.Context;
-import android.util.Log;
 import android.view.MotionEvent;
-import android.view.Surface;
-import android.view.SurfaceHolder;
 import android.view.SurfaceView;
 
-public class CocosSurfaceView extends SurfaceView implements android.view.SurfaceHolder.Callback2 {
+public class CocosSurfaceView extends SurfaceView {
     private CocosTouchHandler mTouchHandler;
-    private long mNativeHandle;
-    private int mWindowId;
 
-    public CocosSurfaceView(Context context, int windowId) {
+    public CocosSurfaceView(Context context) {
         super(context);
-        mWindowId = windowId;
-        mNativeHandle = constructNative(windowId);
-        mTouchHandler = new CocosTouchHandler(mWindowId);
-        getHolder().addCallback(this);
+        mTouchHandler = new CocosTouchHandler();
     }
 
-    private native long constructNative(int windowId);
-    private native void destructNative(long handle);
-    private native void onSizeChangedNative(int windowId, int width, final int height);
-    private native void onSurfaceRedrawNeededNative(long handle);
-    private native void onSurfaceCreatedNative(long handle, Surface surface);
-    private native void onSurfaceChangedNative(long handle, Surface surface, int format, int width, int height);
-    private native void onSurfaceDestroyedNative(long handle);
-
+    private native void nativeOnSizeChanged(final int width, final int height);
 
     @Override
     protected void onSizeChanged(int w, int h, int oldw, int oldh) {
@@ -59,7 +44,7 @@ public class CocosSurfaceView extends SurfaceView implements android.view.Surfac
         CocosHelper.runOnGameThreadAtForeground(new Runnable() {
             @Override
             public void run() {
-                onSizeChangedNative(mWindowId, w, h);
+                nativeOnSizeChanged(w, h);
             }
         });
     }
@@ -68,32 +53,4 @@ public class CocosSurfaceView extends SurfaceView implements android.view.Surfac
     public boolean onTouchEvent(MotionEvent event) {
         return mTouchHandler.onTouchEvent(event);
     }
-
-    @Override
-    public void surfaceRedrawNeeded(SurfaceHolder holder) {
-        onSurfaceRedrawNeededNative(mNativeHandle);
-    }
-
-    @Override
-    public void surfaceCreated(SurfaceHolder holder) {
-        onSurfaceCreatedNative(mNativeHandle, holder.getSurface());
-    }
-
-    @Override
-    public void surfaceChanged(SurfaceHolder holder, int format, int width, int height) {
-        onSurfaceChangedNative(mNativeHandle, holder.getSurface(), format, width, height);
-    }
-
-    @Override
-    public void surfaceDestroyed(SurfaceHolder holder) {
-        onSurfaceDestroyedNative(mNativeHandle);
-    }
-
-    @Override
-    protected void finalize() throws Throwable {
-        super.finalize();
-        destructNative(mNativeHandle);
-        mNativeHandle = 0;
-    }
-
 }

@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2017-2022 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -38,7 +39,7 @@ se::Class *__jsb_SocketIO_class = nullptr; // NOLINT
 
 class JSB_SocketIODelegate : public cc::RefCounted, public cc::network::SocketIO::SIODelegate {
 public:
-    // c++11 map to callbacks
+    //c++11 map to callbacks
     using JSB_SIOCallbackRegistry = ccstd::unordered_map<ccstd::string /* eventName */, se::ValueArray /* 0:callbackFunc, 1:target */>;
 
     JSB_SocketIODelegate() = default;
@@ -57,9 +58,10 @@ public:
         CC_LOG_DEBUG("JSB SocketIO::SIODelegate->onClose method called from native");
         this->fireEventToScript(client, "disconnect", "");
 
-        se::NativePtrToObjectMap::forEach(client, [](se::Object *obj) {
-            obj->unroot();
-        });
+        auto iter = se::NativePtrToObjectMap::find(client);
+        if (iter != se::NativePtrToObjectMap::end()) {
+            iter->second->unroot();
+        }
 
         if (getRefCount() == 1) {
             cc::DeferredReleasePool::add(this);
@@ -72,9 +74,10 @@ public:
         CC_LOG_DEBUG("JSB SocketIO::SIODelegate->onError method called from native with data: %s", data.c_str());
         this->fireEventToScript(client, "error", data);
 
-        se::NativePtrToObjectMap::forEach(client, [](se::Object *obj) {
-            obj->unroot();
-        });
+        auto iter = se::NativePtrToObjectMap::find(client);
+        if (iter != se::NativePtrToObjectMap::end()) {
+            iter->second->unroot();
+        }
     }
 
     void fireEventToScript(cc::network::SIOClient *client, const ccstd::string &eventName, const ccstd::string &data) override { // NOLINT
@@ -87,7 +90,8 @@ public:
             return;
         }
 
-        if (!se::NativePtrToObjectMap::contains(client)) { // IDEA: client probably be a new value with the same address as the old one, it may cause undefined result.
+        auto iter = se::NativePtrToObjectMap::find(client); //IDEA: client probably be a new value with the same address as the old one, it may cause undefined result.
+        if (iter == se::NativePtrToObjectMap::end()) {
             return;
         }
 
@@ -113,7 +117,7 @@ public:
         }
 
         if (eventName == "disconnect") {
-            CC_LOG_DEBUG("disconnect ... "); // IDEA:
+            CC_LOG_DEBUG("disconnect ... "); //IDEA:
         }
     }
 
@@ -319,15 +323,8 @@ static bool SocketIO_close(se::State &s) { // NOLINT(readability-identifier-nami
 }
 SE_BIND_FUNC(SocketIO_close) // NOLINT(readability-identifier-naming)
 
-bool register_all_socketio(se::Object *global) {
-    se::Value nsVal;
-    if (!global->getProperty("jsb", &nsVal, true)) {
-        se::HandleObject jsobj(se::Object::createPlainObject());
-        nsVal.setObject(jsobj);
-        global->setProperty("jsb", nsVal);
-    }
-    se::Object *ns = nsVal.toObject();
-    se::Class *cls = se::Class::create("SocketIO", ns, nullptr, nullptr);
+bool register_all_socketio(se::Object *obj) {
+    se::Class *cls = se::Class::create("SocketIO", obj, nullptr, nullptr);
     cls->defineFinalizeFunction(_SE(SocketIO_finalize));
 
     cls->defineProperty("tag", _SE(SocketIO_prop_getTag), _SE(SocketIO_prop_setTag));
@@ -342,7 +339,7 @@ bool register_all_socketio(se::Object *global) {
     JSBClassType::registerClass<cc::network::SocketIO>(cls);
 
     se::Value ctorVal;
-    ns->getProperty("SocketIO", &ctorVal);
+    obj->getProperty("SocketIO", &ctorVal);
     ctorVal.toObject()->defineFunction("connect", _SE(SocketIO_connect));
     ctorVal.toObject()->defineFunction("close", _SE(SocketIO_close));
 

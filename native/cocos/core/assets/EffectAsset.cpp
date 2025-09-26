@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2021 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -23,11 +24,9 @@
 ****************************************************************************/
 
 #include "core/assets/EffectAsset.h"
-#include "ProgramUtils.h"
 #include "cocos.h"
 #include "core/Root.h"
 #include "core/platform/Debug.h"
-#include "cocos/renderer/pipeline/custom/RenderingModule.h"
 #include "engine/BaseEngine.h"
 #include "renderer/core/ProgramLib.h"
 
@@ -166,22 +165,14 @@ EffectAsset *EffectAsset::get(const ccstd::string &name) {
 }
 
 void EffectAsset::onLoaded() {
-    auto *programLib = render::getProgramLibrary();
-    if (programLib) {
-        render::addEffectDefaultProperties(*this);
-        programLib->addEffect(this);
-    } else {
-        ProgramLib::getInstance()->registerEffect(this);
-    }
+    ProgramLib::getInstance()->registerEffect(this);
     EffectAsset::registerAsset(this);
 #if !CC_EDITOR
     if (CC_CURRENT_ENGINE()->isInited()) {
         precompile();
     } else {
-        _engineEventId = CC_CURRENT_ENGINE()->on<BaseEngine::EngineStatusChange>([this](BaseEngine * /*emitter*/, BaseEngine::EngineStatus status) {
-            if (status == BaseEngine::EngineStatus::ON_START) {
-                this->precompile();
-            }
+        CC_CURRENT_ENGINE()->on(BaseEngine::ON_START, [this]() {
+            this->precompile();
         });
     }
 #endif
@@ -189,9 +180,6 @@ void EffectAsset::onLoaded() {
 
 bool EffectAsset::destroy() {
     EffectAsset::remove(this);
-    if (CC_CURRENT_ENGINE()->isInited()) {
-        CC_CURRENT_ENGINE()->off(_engineEventId);
-    }
     return Super::destroy();
 }
 
@@ -201,7 +189,7 @@ void EffectAsset::initDefault(const ccstd::optional<ccstd::string> &uuid) {
     _name = "builtin-unlit";
     _shaders = effect->_shaders;
     _combinations = effect->_combinations;
-    _techniques = effect->_techniques; // NOTE: it will copy effect->_techniques to _techniques and _techniques will kept by SE_HOLD_RETURN_VALUE
+    _techniques = effect->_techniques; //NOTE: it will copy effect->_techniques to _techniques and _techniques will kept by SE_HOLD_RETURN_VALUE
 }
 
 bool EffectAsset::validate() const {
@@ -263,7 +251,7 @@ const defines = [
                  // ... all the combinations (2x4x3 in this case)
                  ];
  */
-ccstd::vector<MacroRecord> EffectAsset::doCombine(const ccstd::vector<MacroRecord> &cur, const IPreCompileInfo &info, IPreCompileInfo::iterator iter) { // NOLINT(misc-no-recursion)
+ccstd::vector<MacroRecord> EffectAsset::doCombine(const ccstd::vector<MacroRecord> &cur, const IPreCompileInfo &info, IPreCompileInfo::iterator iter) { //NOLINT(misc-no-recursion)
     if (iter == info.end()) {
         return cur;
     }
@@ -302,7 +290,7 @@ ccstd::vector<MacroRecord> EffectAsset::generateRecords(const ccstd::string &key
             ret.emplace_back(record);
         }
     } else {
-        CC_ABORT();
+        CC_ASSERT(false);
     }
 
     return ret;
@@ -332,7 +320,7 @@ ccstd::vector<MacroRecord> EffectAsset::insertInfoValue(const ccstd::vector<Macr
                 ret.emplace_back(tmpRecord);
             }
         } else {
-            CC_ABORT();
+            CC_ASSERT(false);
         }
     }
 

@@ -23,4 +23,9 @@
  THE SOFTWARE.
  */
 
-export * from '../cocos/xr';
+/**
+ * @packageDocumentation
+ * @hidden
+ */
+
+ export * from '../cocos/xr';

@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2021 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -20,13 +21,11 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
-****************************************************************************/
+ ****************************************************************************/
 
 #include "bindings/auto/jsb_assets_auto.h"
-#include "core/assets/Material.h"
-#include "core/assets/SimpleTexture.h"
-#include "core/assets/TextureBase.h"
 #include "core/data/JSBNativeDataHolder.h"
+#include "core/event/EventTypesToJS.h"
 #include "jsb_scene_manual.h"
 
 #ifndef JSB_ALLOC
@@ -52,11 +51,11 @@ static bool js_assets_ImageAsset_setData(se::State &s) // NOLINT(readability-ide
                 args[0].toObject()->getArrayBufferData(&data, nullptr);
             } else {
                 auto *dataHolder = static_cast<cc::JSBNativeDataHolder *>(args[0].toObject()->getPrivateData());
-                CC_ASSERT_NOT_NULL(dataHolder);
+                CC_ASSERT(dataHolder != nullptr);
                 data = dataHolder->getData();
             }
         } else {
-            CC_ABORTF("setData with '%s'", args[0].toStringForce().c_str());
+            CC_ASSERT(false);
         }
         cobj->setData(data);
         return true;
@@ -71,15 +70,14 @@ static bool js_assets_SimpleTexture_registerListeners(se::State &s) // NOLINT(re
     auto *cobj = SE_THIS_OBJECT<cc::SimpleTexture>(s);
     SE_PRECONDITION2(cobj, false, "Invalid Native Object");
     auto *thisObj = s.thisObject();
-
-    cobj->on<cc::SimpleTexture::TextureUpdated>([thisObj](cc::SimpleTexture * /*emitter*/, cc::gfx::Texture *texture) {
+    cobj->on(cc::EventTypesToJS::SIMPLE_TEXTURE_GFX_TEXTURE_UPDATED, [thisObj](cc::gfx::Texture *texture) {
         se::AutoHandleScope hs;
         se::Value arg0;
         nativevalue_to_se(texture, arg0, nullptr);
         se::ScriptEngine::getInstance()->callFunction(thisObj, "_onGFXTextureUpdated", 1, &arg0);
     });
 
-    cobj->on<cc::SimpleTexture::AfterAssignImage>([thisObj](cc::SimpleTexture * /*emitter*/, cc::ImageAsset *image) {
+    cobj->on(cc::EventTypesToJS::SIMPLE_TEXTURE_AFTER_ASSIGN_IMAGE, [thisObj](cc::ImageAsset *image) {
         se::AutoHandleScope hs;
         se::Value arg0;
         nativevalue_to_se(image, arg0, nullptr);
@@ -92,10 +90,10 @@ SE_BIND_FUNC(js_assets_SimpleTexture_registerListeners) // NOLINT(readability-id
 
 static bool js_assets_TextureBase_registerGFXSamplerUpdatedListener(se::State &s) // NOLINT(readability-identifier-naming)
 {
-    auto *cobj = SE_THIS_OBJECT<cc::TextureBase>(s);
+    auto *cobj = SE_THIS_OBJECT<cc::SimpleTexture>(s);
     SE_PRECONDITION2(cobj, false, "Invalid Native Object");
     auto *thisObj = s.thisObject();
-    cobj->on<cc::TextureBase::SamplerUpdated>([thisObj](cc::TextureBase * /*emitter*/, cc::gfx::Sampler *sampler) {
+    cobj->on(cc::EventTypesToJS::TEXTURE_BASE_GFX_SAMPLER_UPDATED, [thisObj](cc::gfx::Sampler *sampler) {
         se::AutoHandleScope hs;
         se::Value arg0;
         nativevalue_to_se(sampler, arg0, nullptr);
@@ -111,7 +109,7 @@ static bool js_assets_Material_registerPassesUpdatedListener(se::State &s) // NO
     auto *cobj = SE_THIS_OBJECT<cc::Material>(s);
     SE_PRECONDITION2(cobj, false, "Invalid Native Object");
     auto *thisObj = s.thisObject();
-    cobj->on<cc::Material::PassesUpdated>([thisObj](cc::Material * /*emitter*/) {
+    cobj->on(cc::EventTypesToJS::MATERIAL_PASSES_UPDATED, [thisObj]() {
         se::AutoHandleScope hs;
         se::ScriptEngine::getInstance()->callFunction(thisObj, "_onPassesUpdated", 0, nullptr);
     });

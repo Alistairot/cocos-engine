@@ -10,8 +10,3 @@
 # Add any project specific keep options here:
 -keep public class com.google.** { *; }
 -keep public class androidx.** { *; }
--keep class com.cocos.lib.CocosActivity {
-    public <methods>;
-    protected <methods>;
-    private void createSurface(...);
-}

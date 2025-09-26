@@ -4,8 +4,6 @@ android {
     ndkPath PROP_NDK_PATH
     compileSdkVersion PROP_COMPILE_SDK_VERSION.toInteger()
     ndkPath PROP_NDK_PATH
-    namespace "com.cocos.lib"
-
     defaultConfig {
         minSdkVersion PROP_MIN_SDK_VERSION
         targetSdkVersion PROP_TARGET_SDK_VERSION
@@ -35,5 +33,7 @@ android {
 }
 
 dependencies {
+    api "androidx.appcompat:appcompat:1.2.0"
+    api "androidx.core:core:1.5.0"
     api fileTree(include: ['*.jar'], dir: '../java/libs')
 }

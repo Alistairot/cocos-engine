@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2021-2022 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -25,7 +26,7 @@
 #include "platform/win32/modules/System.h"
 #include <Windows.h>
 #include "base/memory/Memory.h"
-#include "SDL2/SDL_clipboard.h"
+
 namespace cc {
 using OSType = System::OSType;
 
@@ -101,9 +102,6 @@ System::LanguageType System::getCurrentLanguage() const {
         case LANG_BULGARIAN:
             ret = LanguageType::BULGARIAN;
             break;
-        case LANG_HINDI:
-            ret = LanguageType::HINDI;
-            break;
     }
 
     return ret;
@@ -114,7 +112,7 @@ ccstd::string System::getCurrentLanguageCode() const {
     const LCID locale_id = MAKELCID(lid, SORT_DEFAULT);
     int length = GetLocaleInfoA(locale_id, LOCALE_SISO639LANGNAME, nullptr, 0);
 
-    char *tempCode = reinterpret_cast<char *>(CC_MALLOC(length));
+    char *tempCode = reinterpret_cast<char*>(CC_MALLOC(length));
     GetLocaleInfoA(locale_id, LOCALE_SISO639LANGNAME, tempCode, length);
     ccstd::string code(tempCode);
     CC_FREE(tempCode);
@@ -147,9 +145,4 @@ bool System::openURL(const ccstd::string &url) {
     delete[] temp;
     return (size_t)r > 32;
 }
-
-void System::copyTextToClipboard(const ccstd::string &text) {
-    SDL_SetClipboardText(text.c_str());
-}
-
 } // namespace cc

@@ -1,17 +1,18 @@
 /*
- Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2017-2020 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -24,11 +25,16 @@
 
 import { ccclass, help, executeInEditMode, executionOrder, menu, tooltip, displayOrder, serializable, disallowMultiple } from 'cc.decorator';
 import { EDITOR } from 'internal:constants';
-import { Component, Node } from '../../scene-graph';
-import { Mat4, Rect, Size, Vec2, Vec3, geometry, warnID, visibleRect, approx, EPSILON } from '../../core';
-import { Director, director } from '../../game/director';
-import { NodeEventType } from '../../scene-graph/node-event';
-import { IMask } from '../../scene-graph/node-event-processor';
+import { Component } from '../../core/components';
+import { Mat4, Rect, Size, Vec2, Vec3 } from '../../core/math';
+import { AABB } from '../../core/geometry';
+import { Node } from '../../core/scene-graph';
+import { Director, director } from '../../core/director';
+import { warnID } from '../../core/platform/debug';
+import { NodeEventType } from '../../core/scene-graph/node-event';
+import visibleRect from '../../core/platform/visible-rect';
+import { approx, EPSILON } from '../../core/math/utils';
+import { IMask } from '../../core/scene-graph/node-event-processor';
 import { Mask } from '../components/mask';
 
 const _vec2a = new Vec2();
@@ -62,6 +68,7 @@ export class UITransform extends Component {
      */
     @displayOrder(0)
     @tooltip('i18n:ui_transform.content_size')
+    // @constget
     get contentSize (): Readonly<Size> {
         return this._contentSize;
     }
@@ -86,12 +93,6 @@ export class UITransform extends Component {
         this._markRenderDataDirty();
     }
 
-    /**
-     * @en
-     * component width.
-     * @zh
-     * 组件宽度。
-     */
     get width () {
         return this._contentSize.width;
     }
@@ -116,12 +117,6 @@ export class UITransform extends Component {
         this._markRenderDataDirty();
     }
 
-    /**
-     * @en
-     * component height.
-     * @zh
-     * 组件高度。
-     */
     get height () {
         return this._contentSize.height;
     }
@@ -170,13 +165,6 @@ export class UITransform extends Component {
         this._markRenderDataDirty();
     }
 
-    /**
-     * @en
-     * The x-axis anchor of the node.
-     *
-     * @zh
-     * 锚点位置的 X 坐标。
-     */
     get anchorX () {
         return this._anchorPoint.x;
     }
@@ -191,13 +179,6 @@ export class UITransform extends Component {
         this._markRenderDataDirty();
     }
 
-    /**
-     * @en
-     * The y-axis anchor of the node.
-     *
-     * @zh
-     * 锚点位置的 Y 坐标。
-     */
     get anchorY () {
         return this._anchorPoint.y;
     }
@@ -219,7 +200,7 @@ export class UITransform extends Component {
      *
      * @zh
      * 渲染先后顺序，按照广度渲染排列，按同级节点下进行一次排列。
-     * @deprecated Since v3.1
+     * @deprecated
      */
     get priority () {
         return this._priority;
@@ -299,14 +280,14 @@ export class UITransform extends Component {
      * @zh
      * 设置节点 UI Transform 的原始大小，不受该节点是否被缩放或者旋转的影响。
      *
-     * @param size @en The size of the UI transform. @zh UI Transform 的 Size 大小。
+     * @param size - The size of the UI transformation.
      * @example
      * ```ts
      * import { Size } from 'cc';
      * node.setContentSize(new Size(100, 100));
      * ```
      */
-    public setContentSize(size: Size): void;
+    public setContentSize(size: Size) : void;
 
     /**
      * @en
@@ -315,15 +296,15 @@ export class UITransform extends Component {
      * @zh
      * 设置节点 UI Transform 的原始大小，不受该节点是否被缩放或者旋转的影响。
      *
-     * @param width  @en The width of the UI transform. @zh UI Transform 的宽。
-     * @param height @en The height of the UI transform. @zh UI Transform 的高。
+     * @param width - The width of the UI transformation.
+     * @param height - The height of the UI transformation.
      * @example
      * ```ts
      * import { Size } from 'cc';
      * node.setContentSize(100, 100);
      * ```
      */
-    public setContentSize(width: number, height: number): void;
+    public setContentSize(width: number, height: number) : void;
 
     public setContentSize (size: Size | number, height?: number) {
         const locContentSize = this._contentSize;
@@ -468,9 +449,9 @@ export class UITransform extends Component {
      * @zh 屏幕空间中的点击测试。
      * @en Hit test with point in Screen Space.
      *
-     * @param screenPoint @en point in Screen Space. @zh 屏幕坐标中的点。
+     * @param screenPoint point in Screen Space.
      */
-    public hitTest (screenPoint: Vec2, windowId = 0) {
+    public hitTest (screenPoint: Vec2) {
         const w = this._contentSize.width;
         const h = this._contentSize.height;
         const v3WorldPt = _vec3a;
@@ -480,10 +461,7 @@ export class UITransform extends Component {
         const cameras = this._getRenderScene().cameras;
         for (let i = 0; i < cameras.length; i++) {
             const camera = cameras[i];
-            if (!(camera.visibility & this.node.layer) || (camera.window && !camera.window.swapchain)) { continue; }
-            if (camera.systemWindowId !== windowId) {
-                continue;
-            }
+            if (!(camera.visibility & this.node.layer) || (camera.window && !camera.window.swapchain)) continue;
 
             // Convert Screen Space into World Space.
             Vec3.set(v3WorldPt, screenPoint.x, screenPoint.y, 0);  // vec3 screen pos
@@ -599,13 +577,13 @@ export class UITransform extends Component {
 
     /**
      * @en
-     * Returns an axis aligned bounding box of this node in local space coordinate. <br/>
+     * Returns a "local" axis aligned bounding box of the node. <br/>
      * The returned box is relative only to its parent.
      *
      * @zh
      * 返回父节坐标系下的轴向对齐的包围盒。
      *
-     * @returns @en An axis aligned bounding box of this node in local space coordinate.  @zh 本地坐标系下的包围盒。
+     * @return - 节点大小的包围盒
      * @example
      * ```ts
      * const boundingBox = uiTransform.getBoundingBox();
@@ -627,14 +605,14 @@ export class UITransform extends Component {
 
     /**
      * @en
-     * Returns an axis aligned bounding box of this node in world space coordinate.<br/>
+     * Returns a "world" axis aligned bounding box of the node.<br/>
      * The bounding box contains self and active children's world bounding box.
      *
      * @zh
      * 返回节点在世界坐标系下的对齐轴向的包围盒（AABB）。
      * 该边框包含自身和已激活的子节点的世界边框。
      *
-     * @returns @en An axis aligned bounding box of this node in world space coordinate. @zh 世界坐标系下包围盒。
+     * @returns - 返回世界坐标系下包围盒。
      * @example
      * ```ts
      * const newRect = uiTransform.getBoundingBoxToWorld();
@@ -642,8 +620,8 @@ export class UITransform extends Component {
      */
     public getBoundingBoxToWorld () {
         if (this.node.parent) {
-            const m = this.node.parent.getWorldMatrix();
-            return this.getBoundingBoxTo(m);
+            this.node.parent.getWorldMatrix(_worldMatrix);
+            return this.getBoundingBoxTo(_worldMatrix);
         }
         return this.getBoundingBox();
     }
@@ -657,8 +635,7 @@ export class UITransform extends Component {
      *
      * @param parentMat @en The parent node matrix.
      *                  @zh 父节点矩阵。
-     * @returns @en The minimum bounding box containing the current bounding box and its child nodes.
-     *          @zh 包含当前节点包围盒及其子节点包围盒的最小包围盒。
+     * @returns
      */
     public getBoundingBoxTo (parentMat: Mat4) {
         Mat4.fromRTS(_matrix, this.node.getRotation(), this.node.getPosition(), this.node.getScale());
@@ -675,7 +652,7 @@ export class UITransform extends Component {
         rect.transformMat4(_worldMatrix);
 
         // query child's BoundingBox
-        if (!this.node.children || this.node.children.length === 0) {
+        if (!this.node.children) {
             return rect;
         }
 
@@ -700,11 +677,9 @@ export class UITransform extends Component {
      * Compute the corresponding aabb in world space for raycast.
      *
      * @zh
-     * 计算出此 UI_2D 节点在世界空间下的 aabb 包围盒。
-     * @param out @en The out object of aabb bounding box of the node in world space.  @zh 输出节点在世界空间下的 aabb 包围盒。
-     * @returns @en The aabb bounding box of the node in world space. @zh 节点在世界空间下的 aabb 包围盒。
+     * 计算出此 UI_2D 节点在世界空间下的 aabb 包围盒
      */
-    public getComputeAABB (out?: geometry.AABB) {
+    public getComputeAABB (out?: AABB) {
         const width = this._contentSize.width;
         const height = this._contentSize.height;
         _rect.set(
@@ -721,10 +696,10 @@ export class UITransform extends Component {
         const h = _rect.height / 2;
         const l = 0.001;
         if (out != null) {
-            geometry.AABB.set(out, px, py, pz, w, h, l);
+            AABB.set(out, px, py, pz, w, h, l);
             return out;
         } else {
-            return new geometry.AABB(px, py, pz, w, h, l);
+            return new AABB(px, py, pz, w, h, l);
         }
     }
 
@@ -757,7 +732,7 @@ export class UITransform extends Component {
     private static _sortChildrenSibling (node) {
         const siblings = node.children;
         if (siblings) {
-            siblings.sort((a: Node, b: Node) => {
+            siblings.sort((a:Node, b:Node) => {
                 const aComp = a._uiProps.uiTransformComp;
                 const bComp = b._uiProps.uiTransformComp;
                 const ca = aComp ? aComp._priority : 0;
@@ -769,10 +744,6 @@ export class UITransform extends Component {
         }
     }
 
-    /**
-     * @deprecated Since v3.7.0, this is an engine private interface that will be removed in the future.
-     * @engineInternal
-     */
     public static _sortSiblings () {
         UITransform.priorityChangeNodeMap.forEach((node, ID) => {
             UITransform._sortChildrenSibling(node);
@@ -782,10 +753,6 @@ export class UITransform extends Component {
         UITransform.priorityChangeNodeMap.clear();
     }
 
-    /**
-     * @deprecated Since v3.7.0, this is an engine private interface that will be removed in the future.
-     * @engineInternal
-     */
     public static _cleanChangeMap () {
         UITransform.priorityChangeNodeMap.clear();
     }

@@ -1,8 +1,6 @@
 'use strict';
 
-const { updateElementReadonly } = require('../../utils/assets');
-
-exports.template = /* html */`
+exports.template = `
 <div class="asset-texture">
     <!-- dont delete, for insert -->
     <div class="content">
@@ -55,51 +53,51 @@ exports.template = /* html */`
 </div>
 `;
 
-exports.style = /* css */`
-.asset-texture {
-    display: flex;
-    flex: 1;
-    flex-direction: column;
-}
-.asset-texture > .content {
-    flex: 1;
-}
-.asset-texture > .content ui-prop {
-    margin: 4px 0;
-}
-.asset-texture > .content .filter-advanced-section,
-.asset-texture > .content .wrap-advanced-section,
-.asset-texture > .content .generate-mipmaps-section {
-    margin-left: 1.2em;
-    display: none;
-}
-.asset-texture > .content ui-prop.warn {
-    color: var(--color-warn-fill);
-}
-.asset-texture > .content > ui-prop.warn ui-select {
-    border-color: var(--color-warn-fill);
-}
-.asset-texture > .content > .warn-words {
-    display: none;
-    margin-top: 20px;
-    margin-bottom: 20px;
-    line-height: 1.7;
-    color: var(--color-warn-fill);
-}
-.asset-texture > .preview {
-    position: relative;
-    height: 200px;
-    overflow: hidden;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    padding: 10px;
-    background: var(--color-normal-fill-emphasis);
-    border: 1px solid var(--color-normal-border-emphasis);
-}
-.asset-texture > .preview:hover {
-    border-color: var(--color-warn-fill);
-}
+exports.style = `
+    .asset-texture {
+        display: flex;
+        flex: 1;
+        flex-direction: column;
+     }
+    .asset-texture > .content {
+        flex: 1;
+    }
+    .asset-texture > .content ui-prop {
+        margin: 4px 0;
+    }
+    .asset-texture > .content .filter-advanced-section,
+    .asset-texture > .content .wrap-advanced-section,
+    .asset-texture > .content .generate-mipmaps-section {
+        margin-left: 1.2em;
+        display: none;
+    }
+    .asset-texture > .content ui-prop.warn {
+        color: var(--color-warn-fill);
+    }
+    .asset-texture > .content > ui-prop.warn ui-select {
+        border-color: var(--color-warn-fill);
+    }
+    .asset-texture > .content > .warn-words {
+        display: none;
+        margin-top: 20px;
+        margin-bottom: 20px;
+        line-height: 1.7;
+        color: var(--color-warn-fill);
+    }
+    .asset-texture > .preview {
+        position: relative;
+        height: 200px;
+        overflow: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 10px;
+        background: var(--color-normal-fill-emphasis);
+        border: 1px solid var(--color-normal-border-emphasis);
+    }
+    .asset-texture > .preview:hover {
+        border-color: var(--color-warn-fill);
+    }
 `;
 
 exports.$ = {
@@ -161,6 +159,9 @@ const ModeMap = {
     },
 };
 
+/**
+ * attribute corresponds to the edit element
+ */
 const Elements = {
     anisotropy: {
         ready() {
@@ -172,10 +173,6 @@ const Elements = {
                 });
                 panel.dispatch('change');
             });
-
-            panel.$.anisotropyInput.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
@@ -183,7 +180,7 @@ const Elements = {
             panel.$.anisotropyInput.value = panel.userData.anisotropy;
 
             panel.updateInvalid(panel.$.anisotropyInput, 'anisotropy');
-            updateElementReadonly.call(panel, panel.$.anisotropyInput);
+            panel.updateReadonly(panel.$.anisotropyInput);
         },
     },
     filterMode: {
@@ -207,10 +204,6 @@ const Elements = {
                     panel.$.filterAdvancedSection.style.display = 'block';
                 }
                 panel.dispatch('change');
-            });
-
-            panel.$.filterModeSelect.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
             });
         },
         update() {
@@ -248,7 +241,7 @@ const Elements = {
                 : (panel.$.filterAdvancedSection.style.display = 'none');
 
             panel.updateInvalid(panel.$.filterModeSelect, 'filterMode');
-            updateElementReadonly.call(panel, panel.$.filterModeSelect);
+            panel.updateReadonly(panel.$.filterModeSelect);
         },
     },
     minfilter: {
@@ -260,10 +253,6 @@ const Elements = {
                     userData.minfilter = event.target.value;
                 });
                 panel.dispatch('change');
-            });
-
-            panel.$.minfilterSelect.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
             });
         },
         update() {
@@ -279,7 +268,7 @@ const Elements = {
             panel.$.minfilterSelect.value = panel.userData.minfilter || 'nearest';
 
             panel.updateInvalid(panel.$.minfilterSelect, 'minfilter');
-            updateElementReadonly.call(panel, panel.$.minfilterSelect);
+            panel.updateReadonly(panel.$.minfilterSelect);
         },
     },
     magfilter: {
@@ -291,10 +280,6 @@ const Elements = {
                     userData.magfilter = event.target.value;
                 });
                 panel.dispatch('change');
-            });
-
-            panel.$.magfilterSelect.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
             });
         },
         update() {
@@ -310,7 +295,7 @@ const Elements = {
             panel.$.magfilterSelect.value = panel.userData.magfilter || 'nearest';
 
             panel.updateInvalid(panel.$.magfilterSelect, 'magfilter');
-            updateElementReadonly.call(panel, panel.$.magfilterSelect);
+            panel.updateReadonly(panel.$.magfilterSelect);
         },
     },
     generateMipmaps: {
@@ -336,10 +321,6 @@ const Elements = {
                 });
                 panel.dispatch('change');
             });
-
-            panel.$.generateMipmapsCheckbox.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
@@ -352,7 +333,7 @@ const Elements = {
                 : (panel.$.generateMipmapsSection.style.display = 'none');
 
             panel.updateInvalid(panel.$.generateMipmapsCheckbox, 'generateMipmaps');
-            updateElementReadonly.call(panel, panel.$.generateMipmapsCheckbox);
+            panel.updateReadonly(panel.$.generateMipmapsCheckbox);
         },
     },
     mipfilter: {
@@ -364,10 +345,6 @@ const Elements = {
                     userData.mipfilter = event.target.value;
                 });
                 panel.dispatch('change');
-            });
-
-            panel.$.mipfilterSelect.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
             });
         },
         update() {
@@ -383,7 +360,7 @@ const Elements = {
             panel.$.mipfilterSelect.value = panel.userData.mipfilter || 'nearest';
 
             panel.updateInvalid(panel.$.mipfilterSelect, 'mipfilter');
-            updateElementReadonly.call(panel, panel.$.mipfilterSelect);
+            panel.updateReadonly(panel.$.mipfilterSelect);
         },
     },
     wrapMode: {
@@ -408,10 +385,6 @@ const Elements = {
                 // 校验是否显示警告提示
                 Elements.warnWords.update.call(panel);
                 panel.dispatch('change');
-            });
-
-            panel.$.wrapModeSelect.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
             });
         },
         update() {
@@ -450,7 +423,7 @@ const Elements = {
 
             // 校验是否显示警告提示
             panel.updateInvalid(panel.$.wrapModeSelect, 'wrapMode');
-            updateElementReadonly.call(panel, panel.$.wrapModeSelect);
+            panel.updateReadonly(panel.$.wrapModeSelect);
         },
     },
     wrapModeS: {
@@ -463,10 +436,6 @@ const Elements = {
                 });
                 Elements.warnWords.update.call(panel);
                 panel.dispatch('change');
-            });
-
-            panel.$.wrapModeSSelect.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
             });
         },
         update() {
@@ -486,7 +455,7 @@ const Elements = {
             panel.$.wrapModeSSelect.value = panel.userData.wrapModeS || 'repeat';
 
             panel.updateInvalid(panel.$.wrapModeSSelect, 'wrapModeS');
-            updateElementReadonly.call(panel, panel.$.wrapModeSSelect);
+            panel.updateReadonly(panel.$.wrapModeSSelect);
         },
     },
     wrapModeT: {
@@ -499,10 +468,6 @@ const Elements = {
                 });
                 Elements.warnWords.update.call(panel);
                 panel.dispatch('change');
-            });
-
-            panel.$.wrapModeTSelect.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
             });
         },
         update() {
@@ -522,7 +487,7 @@ const Elements = {
             panel.$.wrapModeTSelect.value = panel.userData.wrapModeT || 'repeat';
 
             panel.updateInvalid(panel.$.wrapModeTSelect, 'wrapModeT');
-            updateElementReadonly.call(panel, panel.$.wrapModeTSelect);
+            panel.updateReadonly(panel.$.wrapModeTSelect);
         },
     },
     /**
@@ -573,6 +538,18 @@ const Elements = {
 
 exports.Elements = Elements;
 
+/**
+ * Method of initializing the panel
+ */
+exports.ready = function() {
+    for (const prop in Elements) {
+        const element = Elements[prop];
+        if (element.ready) {
+            element.ready.call(this);
+        }
+    }
+};
+
 exports.methods = {
     /**
      * Update whether a data is editable in multi-select state
@@ -615,13 +592,14 @@ exports.methods = {
         }
         element.invalid = invalid;
     },
-};
-
-exports.ready = function() {
-    for (const prop in Elements) {
-        const element = Elements[prop];
-        if (element.ready) {
-            element.ready.call(this);
+    /**
+     * Update read-only status
+     */
+    updateReadonly(element) {
+        if (this.asset.readonly) {
+            element.setAttribute('disabled', true);
+        } else {
+            element.removeAttribute('disabled');
         }
-    }
+    },
 };

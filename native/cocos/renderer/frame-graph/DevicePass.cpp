@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2021-2022 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -51,7 +52,11 @@ DevicePass::DevicePass(const FrameGraph &graph, ccstd::vector<PassNode *> const 
     // _enableAutoBarrier: auto barrier in framegraph
     // barrierDeduce: deduce barrier gfx internally
     // to avoid redundant instructions, either inside or outside
-    device->enableAutoBarrier(!gfx::ENABLE_GRAPH_AUTO_BARRIER);
+    auto opts = device->getOptions();
+    opts.enableBarrierDeduce = !gfx::ENABLE_GRAPH_AUTO_BARRIER;
+    device->setOptions(opts);
+
+    CC_ASSERT(gfx::ENABLE_GRAPH_AUTO_BARRIER ^ gfx::Device::getInstance()->getOptions().enableBarrierDeduce);
 
     // Important Notice:
     // here attchment index has changed.
@@ -64,7 +69,7 @@ DevicePass::DevicePass(const FrameGraph &graph, ccstd::vector<PassNode *> const 
     auto depthNewIndex = gfx::INVALID_BINDING;
     for (uint32_t id = 0; id != attachments.size(); ++id) {
         if (attachments[id].desc.usage != RenderTargetAttachment::Usage::COLOR) {
-            CC_ASSERT_EQ(depthIndex, gfx::INVALID_BINDING);
+            CC_ASSERT(depthIndex == gfx::INVALID_BINDING);
             depthIndex = id;
             depthNewIndex = static_cast<uint32_t>(attachments.size() - 1);
         }
@@ -145,7 +150,7 @@ void DevicePass::passDependency(gfx::RenderPassInfo &rpInfo) {
                     textureBarriers.emplace_back(static_cast<gfx::TextureBarrier *>(res.first));
                     textures.emplace_back(static_cast<gfx::Texture *>(res.second));
                 } else {
-                    CC_ABORT();
+                    CC_ASSERT(false);
                 }
             }
 
@@ -158,10 +163,10 @@ void DevicePass::passDependency(gfx::RenderPassInfo &rpInfo) {
                 nullptr,
                 bufferBarriers.data() + lastBufferIndex,
                 buffers.data() + lastBufferIndex,
-                static_cast<uint32_t>(buffers.size() - lastBufferIndex),
+                static_cast<uint32_t>(buffers.size() - lastBufferIndex + 1),
                 textureBarriers.data() + lastTextureIndex,
                 textures.data() + lastTextureIndex,
-                static_cast<uint32_t>(textures.size() - lastTextureIndex)});
+                static_cast<uint32_t>(textures.size() - lastTextureIndex + 1)});
 
             for (const auto &rearBarrier : _barriers[barrierID].get().rearBarriers) {
                 const auto &res = getBarrier(rearBarrier, &_resourceTable);
@@ -172,7 +177,7 @@ void DevicePass::passDependency(gfx::RenderPassInfo &rpInfo) {
                     textureBarriers.emplace_back(static_cast<gfx::TextureBarrier *>(res.first));
                     textures.emplace_back(static_cast<gfx::Texture *>(res.second));
                 } else {
-                    CC_ABORT();
+                    CC_ASSERT(false);
                 }
             }
         };
@@ -193,10 +198,10 @@ void DevicePass::passDependency(gfx::RenderPassInfo &rpInfo) {
                 nullptr,
                 bufferBarriers.data() + lastBufferIndex,
                 buffers.data() + lastBufferIndex,
-                static_cast<uint32_t>(buffers.size() - lastBufferIndex),
+                static_cast<uint32_t>(buffers.size() - lastBufferIndex + 1),
                 textureBarriers.data() + lastTextureIndex,
                 textures.data() + lastTextureIndex,
-                static_cast<uint32_t>(textures.size() - lastTextureIndex)});
+                static_cast<uint32_t>(textures.size() - lastTextureIndex + 1)});
         }
     }
 }

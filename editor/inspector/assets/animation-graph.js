@@ -1,39 +1,25 @@
-'use strict';
-
-const { updateElementReadonly } = require('../utils/assets');
-
-exports.template = /* html */`
+exports.template = `
 <section class="asset-animation-graph">
     <ui-button class="open">
         <ui-label value="i18n:ENGINE.assets.animationGraph.edit"></ui-label>
     </ui-button>
-    <ui-label class="multiple-warn-tip" value="i18n:ENGINE.assets.multipleWarning"></ui-label>
+    <ui-label class="tip" value="i18n:ENGINE.assets.multipleWarning"></ui-label>
 </section>
 `;
 
-exports.style = /* css */`
+exports.style = `
 .asset-animation-graph {
    padding-top: 10px;
    text-align: center;
 }
 
-.asset-animation-graph[multiple-invalid] > *:not(.multiple-warn-tip) {
-    display: none!important;
- }
-
- .asset-animation-graph[multiple-invalid] > .multiple-warn-tip {
-    display: block;
- }
-
-.asset-animation-graph .multiple-warn-tip {
-    display: none;
-    text-align: center;
+.asset-animation-graph .tip {
     color: var(--color-focus-contrast-weakest);
 }
 `;
 
 exports.$ = {
-    container: '.asset-animation-graph',
+    constainer: '.asset-animation-graph',
     button: '.open',
     tip: '.tip',
 };
@@ -50,13 +36,12 @@ exports.update = function(assetList, metaList) {
     this.meta = this.metaList[0];
     this.asset = this.assetList[0];
 
-    if (assetList.length > 1) {
-        this.$.container.setAttribute('multiple-invalid', '');
-        return;
+    if (assetList.length !== 1) {
+        this.$.button.disabled = true;
+        this.$.tip.style.display = 'block';
     } else {
-        this.$.container.removeAttribute('multiple-invalid');
+        this.$.button.disabled = false;
+        this.$.tip.style.display = 'none';
     }
-
-    updateElementReadonly.call(this, this.$.button);
 };
 

@@ -1,7 +1,3 @@
-'use strict';
-
-const { updateElementReadonly } = require('../utils/assets');
-
 exports.template = /* html */ `
 <section class="asset-erp-texture-cube">
     <div class="content">
@@ -59,7 +55,7 @@ exports.template = /* html */ `
 </section>
 `;
 
-exports.style = /* css */`
+exports.style = `
 .asset-erp-texture-cube  ui-prop{
     margin-top: 4px;
 }
@@ -86,6 +82,27 @@ exports.$ = {
     wrapModeS: '#wrapModeS',
     wrapModeT: '#wrapModeT',
     mipBakeMode: '#mipBakeMode',
+};
+
+exports.ready = function() {
+    for (const key in Elements) {
+        if (typeof Elements[key].ready === 'function') {
+            Elements[key].ready.call(this);
+        }
+    }
+};
+
+exports.update = function(assetList, metaList) {
+    this.assetList = assetList;
+    this.metaList = metaList;
+    this.asset = assetList[0];
+    this.meta = metaList[0];
+
+    for (const key in Elements) {
+        if (typeof Elements[key].update === 'function') {
+            Elements[key].update.call(this);
+        }
+    }
 };
 
 const ModeMap = {
@@ -130,36 +147,27 @@ const ModeMap = {
 const Elements = {
     anisotropy: {
         ready() {
-            this.$.anisotropy.addEventListener('change', this.change.bind(this, 'anisotropy'));
-            this.$.anisotropy.addEventListener('confirm', () => {
-                this.dispatch('snapshot');
-            });
+            this.$.anisotropy.addEventListener('change', this.dataChange.bind(this, 'anisotropy'));
         },
         update() {
             this.$.anisotropy.value = this.meta.userData.anisotropy;
             this.updateInvalid(this.$.anisotropy, 'anisotropy');
-            updateElementReadonly.call(this, this.$.anisotropy);
+            this.updateReadonly(this.$.anisotropy);
         },
     },
     faceSize: {
         ready() {
-            this.$.faceSize.addEventListener('change', this.change.bind(this, 'faceSize'));
-            this.$.faceSize.addEventListener('confirm', () => {
-                this.dispatch('snapshot');
-            });
+            this.$.faceSize.addEventListener('change', this.dataChange.bind(this, 'faceSize'));
         },
         update() {
             this.$.faceSize.value = this.meta.userData.faceSize;
             this.updateInvalid(this.$.faceSize, 'faceSize');
-            updateElementReadonly.call(this, this.$.faceSize);
+            this.updateReadonly(this.$.faceSize);
         },
     },
     filterMode: {
         ready() {
-            this.$.filterMode.addEventListener('change', this.change.bind(this, 'filterMode'));
-            this.$.filterMode.addEventListener('confirm', () => {
-                this.dispatch('snapshot');
-            });
+            this.$.filterMode.addEventListener('change', this.dataChange.bind(this, 'filterMode'));
         },
         update() {
             let optionsHtml = '';
@@ -194,15 +202,12 @@ const Elements = {
                 : (this.$.filterAdvancedSection.style.display = 'none');
 
             this.updateInvalid(this.$.filterMode, 'filterMode');
-            updateElementReadonly.call(this, this.$.filterMode);
+            this.updateReadonly(this.$.filterMode);
         },
     },
     minfilter: {
         ready() {
-            this.$.minfilter.addEventListener('change', this.change.bind(this, 'minfilter'));
-            this.$.minfilter.addEventListener('confirm', () => {
-                this.dispatch('snapshot');
-            });
+            this.$.minfilter.addEventListener('change', this.dataChange.bind(this, 'minfilter'));
         },
         update() {
             let optionsHtml = '';
@@ -214,15 +219,12 @@ const Elements = {
 
             this.$.minfilter.value = this.meta.userData.minfilte || 'nearest';
             this.updateInvalid(this.$.minfilter, 'minfilter');
-            updateElementReadonly.call(this, this.$.minfilter);
+            this.updateReadonly(this.$.minfilter);
         },
     },
     magfilter: {
         ready() {
-            this.$.magfilter.addEventListener('change', this.change.bind(this, 'magfilter'));
-            this.$.magfilter.addEventListener('confirm', () => {
-                this.dispatch('snapshot');
-            });
+            this.$.magfilter.addEventListener('change', this.dataChange.bind(this, 'magfilter'));
         },
         update() {
             let optionsHtml = '';
@@ -234,15 +236,12 @@ const Elements = {
 
             this.$.magfilter.value = this.meta.userData.magfilter || 'nearest';
             this.updateInvalid(this.$.magfilter, 'magfilter');
-            updateElementReadonly.call(this, this.$.magfilter);
+            this.updateReadonly(this.$.magfilter);
         },
     },
     generateMipmaps: {
         ready() {
-            this.$.generateMipmaps.addEventListener('change', this.change.bind(this, 'generateMipmaps'));
-            this.$.generateMipmaps.addEventListener('confirm', () => {
-                this.dispatch('snapshot');
-            });
+            this.$.generateMipmaps.addEventListener('change', this.dataChange.bind(this, 'generateMipmaps'));
         },
         update() {
             this.$.generateMipmaps.value = this.meta.userData.mipfilter ? this.meta.userData.mipfilter !== 'none' : false;
@@ -253,15 +252,12 @@ const Elements = {
                 : (this.$.generateMipmapsSection.style.display = 'none');
 
             this.updateInvalid(this.$.generateMipmaps, 'generateMipmaps');
-            updateElementReadonly.call(this, this.$.generateMipmaps);
+            this.updateReadonly(this.$.generateMipmaps);
         },
     },
     mipfilter: {
         ready() {
-            this.$.mipfilter.addEventListener('change', this.change.bind(this, 'mipfilter'));
-            this.$.mipfilter.addEventListener('confirm', () => {
-                this.dispatch('snapshot');
-            });
+            this.$.mipfilter.addEventListener('change', this.dataChange.bind(this, 'mipfilter'));
         },
         update() {
             let optionsHtml = '';
@@ -273,15 +269,12 @@ const Elements = {
 
             this.$.mipfilter.value = this.meta.userData.mipfilter || 'nearest';
             this.updateInvalid(this.$.mipfilter, 'mipfilter');
-            updateElementReadonly.call(this, this.$.mipfilter);
+            this.updateReadonly(this.$.mipfilter);
         },
     },
     wrapMode: {
         ready() {
-            this.$.wrapMode.addEventListener('change', this.change.bind(this, 'wrapMode'));
-            this.$.wrapMode.addEventListener('confirm', () => {
-                this.dispatch('snapshot');
-            });
+            this.$.wrapMode.addEventListener('change', this.dataChange.bind(this, 'wrapMode'));
         },
         update() {
             let optionsHtml = '';
@@ -316,15 +309,12 @@ const Elements = {
                 : (this.$.wrapAdvancedSection.style.display = 'none');
 
             this.updateInvalid(this.$.wrapMode, 'wrapMode');
-            updateElementReadonly.call(this, this.$.wrapMode);
+            this.updateReadonly(this.$.wrapMode);
         },
     },
     wrapModeS: {
         ready() {
-            this.$.wrapModeS.addEventListener('change', this.change.bind(this, 'wrapModeS'));
-            this.$.wrapModeS.addEventListener('confirm', () => {
-                this.dispatch('snapshot');
-            });
+            this.$.wrapModeS.addEventListener('change', this.dataChange.bind(this, 'wrapModeS'));
         },
         update() {
             let optionsHtml = '';
@@ -340,15 +330,12 @@ const Elements = {
 
             this.$.wrapModeS.value = this.meta.userData.wrapModeS || 'repeat';
             this.updateInvalid(this.$.wrapModeS, 'wrapModeS');
-            updateElementReadonly.call(this, this.$.wrapModeS);
+            this.updateReadonly(this.$.wrapModeS);
         },
     },
     wrapModeT: {
         ready() {
-            this.$.wrapModeT.addEventListener('change', this.change.bind(this, 'wrapModeT'));
-            this.$.wrapModeT.addEventListener('confirm', () => {
-                this.dispatch('snapshot');
-            });
+            this.$.wrapModeT.addEventListener('change', this.dataChange.bind(this, 'wrapModeT'));
         },
         update() {
             let optionsHtml = '';
@@ -364,20 +351,17 @@ const Elements = {
 
             this.$.wrapModeT.value = this.meta.userData.wrapModeT || 'repeat';
             this.updateInvalid(this.$.wrapModeT, 'wrapModeT');
-            updateElementReadonly.call(this, this.$.wrapModeT);
+            this.updateReadonly(this.$.wrapModeT);
         },
     },
     mipBakeMode: {
         ready() {
-            this.$.mipBakeMode.addEventListener('change', this.change.bind(this, 'mipBakeMode'));
-            this.$.mipBakeMode.addEventListener('confirm', () => {
-                this.dispatch('snapshot');
-            });
+            this.$.mipBakeMode.addEventListener('change', this.dataChange.bind(this, 'mipBakeMode'));
         },
         update() {
             this.$.mipBakeMode.value = this.meta.userData.mipBakeMode === 2 ? true : false;
             this.updateInvalid(this.$.mipBakeMode, 'mipBakeMode');
-            updateElementReadonly.call(this, this.$.mipBakeMode);
+            this.updateReadonly(this.$.mipBakeMode);
         },
     },
 };
@@ -420,7 +404,14 @@ exports.methods = {
         }
         element.invalid = invalid;
     },
-    change(key, event) {
+    updateReadonly(element) {
+        if (this.asset.readonly) {
+            element.setAttribute('disabled', true);
+        } else {
+            element.removeAttribute('disabled');
+        }
+    },
+    dataChange(key, event) {
         let value = event.target.value;
         if (key === 'mipBakeMode') {
             value = event.target.value ? 2 : 1;
@@ -468,25 +459,4 @@ exports.methods = {
 
         this.dispatch('change');
     },
-};
-
-exports.ready = function() {
-    for (const key in Elements) {
-        if (typeof Elements[key].ready === 'function') {
-            Elements[key].ready.call(this);
-        }
-    }
-};
-
-exports.update = function(assetList, metaList) {
-    this.assetList = assetList;
-    this.metaList = metaList;
-    this.asset = assetList[0];
-    this.meta = metaList[0];
-
-    for (const key in Elements) {
-        if (typeof Elements[key].update === 'function') {
-            Elements[key].update.call(this);
-        }
-    }
 };

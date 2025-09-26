@@ -1,17 +1,18 @@
 /*
- Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2020 Xiamen Yaji Software Co., Ltd.
 
  https://www.cocos.com/
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -20,7 +21,7 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
-*/
+ */
 
 import { TweenSystem } from './tween-system';
 import { warn } from '../core';
@@ -166,7 +167,7 @@ export class Tween<T> {
 
     /**
      * @en
-     * Add an action which calculates with absolute value.
+     * Add an action which calculate with absolute value.
      * @zh
      * 添加一个对属性进行绝对值计算的 action。
      * @method to
@@ -186,7 +187,7 @@ export class Tween<T> {
 
     /**
      * @en
-     * Add an action which calculates with relative value.
+     * Add an action which calculate with relative value.
      * @zh
      * 添加一个对属性进行相对值计算的 action。
      * @method by
@@ -222,7 +223,7 @@ export class Tween<T> {
 
     /**
      * @en
-     * Add a delay action.
+     * Add an delay action.
      * @zh
      * 添加一个延时 action。
      * @method delay
@@ -237,7 +238,7 @@ export class Tween<T> {
 
     /**
      * @en
-     * Add a callback action.
+     * Add an callback action.
      * @zh
      * 添加一个回调 action。
      * @method call
@@ -253,7 +254,7 @@ export class Tween<T> {
 
     /**
      * @en
-     * Add a sequence action.
+     * Add an sequence action.
      * @zh
      * 添加一个队列 action。
      * @method sequence
@@ -267,7 +268,7 @@ export class Tween<T> {
 
     /**
      * @en
-     * Add a parallel action.
+     * Add an parallel action.
      * @zh
      * 添加一个并行 action。
      * @method parallel
@@ -281,7 +282,7 @@ export class Tween<T> {
 
     /**
      * @en
-     * Add a repeat action.
+     * Add an repeat action.
      * This action will integrate before actions to a sequence action as their parameters.
      * @zh
      * 添加一个重复 action，这个 action 会将前一个动作作为他的参数。
@@ -309,7 +310,7 @@ export class Tween<T> {
 
     /**
      * @en
-     * Add a repeat forever action.
+     * Add an repeat forever action.
      * This action will integrate before actions to a sequence action as their parameters.
      * @zh
      * 添加一个永久重复 action，这个 action 会将前一个动作作为他的参数。
@@ -332,7 +333,7 @@ export class Tween<T> {
 
     /**
      * @en
-     * Add a reverse time action.
+     * Add an reverse time action.
      * This action will integrate before actions to a sequence action as their parameters.
      * @zh
      * 添加一个倒置时间 action，这个 action 会将前一个动作作为他的参数。
@@ -355,7 +356,7 @@ export class Tween<T> {
 
     /**
      * @en
-     * Add a hide action, only for node target.
+     * Add an hide action, only for node target.
      * @zh
      * 添加一个隐藏 action，只适用于 target 是节点类型的。
      */
@@ -367,7 +368,7 @@ export class Tween<T> {
 
     /**
      * @en
-     * Add a show action, only for node target.
+     * Add an show action, only for node target.
      * @zh
      * 添加一个显示 action，只适用于 target 是节点类型的。
      */
@@ -379,24 +380,12 @@ export class Tween<T> {
 
     /**
      * @en
-     * Add a removeSelf action, only for node target.
+     * Add an removeSelf action, only for node target.
      * @zh
      * 添加一个移除自己 action，只适用于 target 是节点类型的。
      */
     removeSelf (): Tween<T> {
         const action = removeSelf(false);
-        this._actions.push(action);
-        return this;
-    }
-
-    /**
-     * @en
-     * Add a destroySelf action, only for node target.
-     * @zh
-     * 添加一个移除并销毁自己 action，只适用于 target 是节点类型的。
-     */
-    destroySelf (): Tween<T> {
-        const action = removeSelf(true);
         this._actions.push(action);
         return this;
     }

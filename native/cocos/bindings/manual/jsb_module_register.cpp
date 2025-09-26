@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2017-2022 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -30,7 +31,6 @@
 #include "cocos/bindings/auto/jsb_extension_auto.h"
 #include "cocos/bindings/auto/jsb_geometry_auto.h"
 #include "cocos/bindings/auto/jsb_gfx_auto.h"
-#include "cocos/bindings/auto/jsb_gi_auto.h"
 #include "cocos/bindings/auto/jsb_network_auto.h"
 #include "cocos/bindings/auto/jsb_pipeline_auto.h"
 #include "cocos/bindings/auto/jsb_render_auto.h"
@@ -40,7 +40,6 @@
 #include "cocos/bindings/manual/jsb_assets_manual.h"
 #include "cocos/bindings/manual/jsb_cocos_manual.h"
 #include "cocos/bindings/manual/jsb_conversions.h"
-#include "cocos/bindings/manual/jsb_geometry_manual.h"
 #include "cocos/bindings/manual/jsb_gfx_manual.h"
 #include "cocos/bindings/manual/jsb_global.h"
 #include "cocos/bindings/manual/jsb_network_manual.h"
@@ -64,12 +63,6 @@
 
 #if CC_USE_XR
     #include "cocos/bindings/auto/jsb_xr_auto.h"
-    #include "cocos/bindings/auto/jsb_xr_extension_auto.h"
-#endif
-
-#if CC_USE_AR_MODULE
-    #include "cocos/bindings/auto/jsb_ar_auto.h"
-    #include "cocos/bindings/manual/jsb_ar_manual.h"
 #endif
 
 #if (CC_PLATFORM == CC_PLATFORM_IOS || CC_PLATFORM == CC_PLATFORM_MACOS)
@@ -144,12 +137,10 @@ bool jsb_register_all_modules() {
     se->addRegisterCallback(register_all_pipeline);
     se->addRegisterCallback(register_all_pipeline_manual);
     se->addRegisterCallback(register_all_geometry);
-    se->addRegisterCallback(register_all_geometry_manual);
     se->addRegisterCallback(register_all_scene);
-    se->addRegisterCallback(register_all_gi);
     se->addRegisterCallback(register_all_scene_manual);
     se->addRegisterCallback(register_all_render);
-    se->addRegisterCallback(register_all_native2d);
+    se->addRegisterCallback(register_all_2d);
 
 #if (CC_PLATFORM == CC_PLATFORM_IOS || CC_PLATFORM == CC_PLATFORM_MACOS)
     se->addRegisterCallback(register_javascript_objc_bridge);
@@ -168,7 +159,6 @@ bool jsb_register_all_modules() {
 
 #if CC_USE_XR
     se->addRegisterCallback(register_all_xr);
-    se->addRegisterCallback(register_all_xr_extension);
 #endif
 
 #if CC_USE_SOCKET
@@ -194,11 +184,6 @@ bool jsb_register_all_modules() {
 #if CC_USE_PHYSICS_PHYSX
     se->addRegisterCallback(register_all_physics);
 #endif
-
-#if CC_USE_AR_MODULE
-    se->addRegisterCallback(register_all_ar);
-    se->addRegisterCallback(register_all_ar_manual);
-#endif // CC_USE_AR_MODULE
 
 #if (CC_PLATFORM == CC_PLATFORM_IOS || CC_PLATFORM == CC_PLATFORM_ANDROID || CC_PLATFORM == CC_PLATFORM_OHOS)
 

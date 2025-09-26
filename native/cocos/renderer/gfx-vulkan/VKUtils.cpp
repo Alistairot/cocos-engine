@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2020-2022 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -34,7 +35,7 @@ VkQueryType mapVkQueryType(QueryType type) {
         case QueryType::PIPELINE_STATISTICS: return VK_QUERY_TYPE_PIPELINE_STATISTICS;
         case QueryType::TIMESTAMP: return VK_QUERY_TYPE_TIMESTAMP;
         default: {
-            CC_ABORT();
+            CC_ASSERT(false);
             return VK_QUERY_TYPE_OCCLUSION;
         }
     }
@@ -162,7 +163,7 @@ VkFormat mapVkFormat(Format format, const CCVKGPUDevice *gpuDevice) {
         case Format::ASTC_SRGBA_12X12: return VK_FORMAT_ASTC_12x12_SRGB_BLOCK;
 
         default: {
-            CC_ABORT();
+            CC_ASSERT(false);
             return VK_FORMAT_B8G8R8A8_UNORM;
         }
     }
@@ -174,7 +175,7 @@ VkAttachmentLoadOp mapVkLoadOp(LoadOp loadOp) {
         case LoadOp::LOAD: return VK_ATTACHMENT_LOAD_OP_LOAD;
         case LoadOp::DISCARD: return VK_ATTACHMENT_LOAD_OP_DONT_CARE;
         default: {
-            CC_ABORT();
+            CC_ASSERT(false);
             return VK_ATTACHMENT_LOAD_OP_LOAD;
         }
     }
@@ -185,7 +186,7 @@ VkAttachmentStoreOp mapVkStoreOp(StoreOp storeOp) {
         case StoreOp::STORE: return VK_ATTACHMENT_STORE_OP_STORE;
         case StoreOp::DISCARD: return VK_ATTACHMENT_STORE_OP_DONT_CARE;
         default: {
-            CC_ABORT();
+            CC_ASSERT(false);
             return VK_ATTACHMENT_STORE_OP_STORE;
         }
     }
@@ -212,7 +213,7 @@ VkImageType mapVkImageType(TextureType type) {
         case TextureType::TEX2D_ARRAY: return VK_IMAGE_TYPE_2D;
         case TextureType::TEX3D: return VK_IMAGE_TYPE_3D;
         default: {
-            CC_ABORT();
+            CC_ASSERT(false);
             return VK_IMAGE_TYPE_2D;
         }
     }
@@ -238,7 +239,6 @@ VkImageUsageFlagBits mapVkImageUsageFlagBits(TextureUsage usage) {
     if (hasFlag(usage, TextureUsage::COLOR_ATTACHMENT)) flags |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
     if (hasFlag(usage, TextureUsage::DEPTH_STENCIL_ATTACHMENT)) flags |= VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT;
     if (hasFlag(usage, TextureUsage::INPUT_ATTACHMENT)) flags |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
-    if (hasFlag(usage, TextureUsage::SHADING_RATE)) flags |= VK_IMAGE_USAGE_FRAGMENT_SHADING_RATE_ATTACHMENT_BIT_KHR;
     return static_cast<VkImageUsageFlagBits>(flags);
 }
 
@@ -254,6 +254,7 @@ VkImageCreateFlags mapVkImageCreateFlags(TextureType type) {
     uint32_t res = 0U;
     switch (type) {
         case TextureType::CUBE: res |= VK_IMAGE_CREATE_CUBE_COMPATIBLE_BIT; break;
+        case TextureType::TEX2D_ARRAY: res |= VK_IMAGE_CREATE_2D_ARRAY_COMPATIBLE_BIT; break;
         default: break;
     }
     return static_cast<VkImageCreateFlags>(res);
@@ -268,7 +269,7 @@ VkImageViewType mapVkImageViewType(TextureType viewType) {
         case TextureType::TEX3D: return VK_IMAGE_VIEW_TYPE_3D;
         case TextureType::CUBE: return VK_IMAGE_VIEW_TYPE_CUBE;
         default: {
-            CC_ABORT();
+            CC_ASSERT(false);
             return VK_IMAGE_VIEW_TYPE_2D;
         }
     }
@@ -279,7 +280,7 @@ VkCommandBufferLevel mapVkCommandBufferLevel(CommandBufferType type) {
         case CommandBufferType::PRIMARY: return VK_COMMAND_BUFFER_LEVEL_PRIMARY;
         case CommandBufferType::SECONDARY: return VK_COMMAND_BUFFER_LEVEL_SECONDARY;
         default: {
-            CC_ABORT();
+            CC_ASSERT(false);
             return VK_COMMAND_BUFFER_LEVEL_SECONDARY;
         }
     }
@@ -297,7 +298,7 @@ VkDescriptorType mapVkDescriptorType(DescriptorType type) {
         case DescriptorType::STORAGE_IMAGE: return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         case DescriptorType::INPUT_ATTACHMENT: return VK_DESCRIPTOR_TYPE_INPUT_ATTACHMENT;
         default: {
-            CC_ABORT();
+            CC_ASSERT(false);
             return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
         }
     }
@@ -321,7 +322,7 @@ VkShaderStageFlagBits mapVkShaderStageFlagBits(ShaderStageFlagBit stage) {
         case ShaderStageFlagBit::FRAGMENT: return VK_SHADER_STAGE_FRAGMENT_BIT;
         case ShaderStageFlagBit::COMPUTE: return VK_SHADER_STAGE_COMPUTE_BIT;
         default: {
-            CC_ABORT();
+            CC_ASSERT(false);
             return VK_SHADER_STAGE_VERTEX_BIT;
         }
     }
@@ -560,7 +561,6 @@ static constexpr ThsvsAccessType THSVS_ACCESS_TYPES[] = {
     THSVS_ACCESS_TRANSFER_WRITE,                                             // TRANSFER_WRITE
     THSVS_ACCESS_HOST_PREINITIALIZED,                                        // HOST_PREINITIALIZED
     THSVS_ACCESS_HOST_WRITE,                                                 // HOST_WRITE
-    THSVS_ACCESS_SHADING_RATE_READ_NV,                                       // SHADING_RATE
 };
 
 const ThsvsAccessType *getAccessType(AccessFlagBit flag) {

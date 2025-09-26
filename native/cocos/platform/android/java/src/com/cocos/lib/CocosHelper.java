@@ -403,15 +403,10 @@ public class CocosHelper {
         });
     }
     public static void setKeepScreenOn(boolean keepScreenOn) {
-        sActivity.runOnUiThread(new Runnable() {
-            @Override
-            public void run() {
-                if (keepScreenOn) {
-                    sActivity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-                } else {
-                    sActivity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
-                }
-            }
-        });
+        if (keepScreenOn) {
+            sActivity.getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        } else {
+            sActivity.getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
+        }
     }
 }

@@ -1,6 +1,6 @@
 
 
-import { Layers } from '../../cocos/scene-graph';
+import { Layers } from '../../cocos/core/scene-graph';
 
 test('Layer', () => {
     expect(Layers.Enum.ALL).toBe(0xffffffff);

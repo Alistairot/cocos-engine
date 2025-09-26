@@ -33,7 +33,6 @@ import org.cocos2dx.okhttp3.Call;
 import org.cocos2dx.okhttp3.Callback;
 import org.cocos2dx.okhttp3.Dispatcher;
 import org.cocos2dx.okhttp3.OkHttpClient;
-import org.cocos2dx.okhttp3.Protocol;
 import org.cocos2dx.okhttp3.Request;
 import org.cocos2dx.okhttp3.Response;
 
@@ -46,7 +45,6 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.Collections;
 import java.util.Iterator;
 import java.util.LinkedList;
 import java.util.Map;
@@ -107,14 +105,12 @@ public class CocosDownloader {
                     .followRedirects(true)
                     .followSslRedirects(true)
                     .connectTimeout(timeoutInSeconds, TimeUnit.SECONDS)
-                    .protocols(Collections.singletonList(Protocol.HTTP_1_1))
                     .build();
         } else {
             downloader._httpClient = new OkHttpClient().newBuilder()
                     .dispatcher(dispatcher)
                     .followRedirects(true)
                     .followSslRedirects(true)
-                    .protocols(Collections.singletonList(Protocol.HTTP_1_1))
                     .build();
         }
 

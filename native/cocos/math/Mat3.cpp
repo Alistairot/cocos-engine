@@ -1,18 +1,18 @@
 /****************************************************************************
- Copyright (c) 2018-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2018-2021 Xiamen Yaji Software Co., Ltd.
  
  http://www.cocos.com
  
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
-
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
+ 
  The above copyright notice and this permission notice shall be included in
  all copies or substantial portions of the Software.
-
+ 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
  FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
@@ -20,7 +20,7 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
-****************************************************************************/
+ ****************************************************************************/
 
 #include "math/Mat3.h"
 
@@ -416,8 +416,10 @@ void Mat3::subtract(const Mat3 &a, const Mat3 &b, Mat3 *out) {
     out->m[8] = a.m[8] - b.m[8];
 }
 
-bool Mat3::approxEquals(const Mat3 &v, float precision /* = CC_FLOAT_CMP_PRECISION */) const {
-    return math::isEqualF(m[0], v.m[0], precision) && math::isEqualF(m[1], v.m[1], precision) && math::isEqualF(m[2], v.m[2], precision) && math::isEqualF(m[3], v.m[3], precision) && math::isEqualF(m[4], v.m[4], precision) && math::isEqualF(m[5], v.m[5], precision) && math::isEqualF(m[6], v.m[6], precision) && math::isEqualF(m[7], v.m[7], precision) && math::isEqualF(m[8], v.m[8], precision);
+bool Mat3::approxEquals(const Mat3& v, float precision/* = CC_FLOAT_CMP_PRECISION */) const {
+    return math::isEqualF(m[0], v.m[0], precision) && math::isEqualF(m[1], v.m[1], precision) && math::isEqualF(m[2], v.m[2], precision)
+        && math::isEqualF(m[3], v.m[3], precision) && math::isEqualF(m[4], v.m[4], precision) && math::isEqualF(m[5], v.m[5], precision)
+        && math::isEqualF(m[6], v.m[6], precision) && math::isEqualF(m[7], v.m[7], precision) && math::isEqualF(m[8], v.m[8], precision);
 }
 
 const Mat3 Mat3::IDENTITY = Mat3(

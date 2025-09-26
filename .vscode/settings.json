@@ -21,5 +21,4 @@
     "files.associations": {
         "iterator": "cpp"
     },
-    "cmake.configureOnOpen": false,
 }

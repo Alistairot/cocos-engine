@@ -1,17 +1,18 @@
 /*
- Copyright (c) 2018-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2018-2020 Xiamen Yaji Software Co., Ltd.
 
  https://www.cocos.com/
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -31,8 +32,8 @@ export { default as MutableForwardIterator } from './mutable-forward-iterator';
  * 移除指定索引的数组元素。
  * @en
  * Removes the array item at the specified index.
- * @param array @zh 被操作的数组。@en The array to be operated.
- * @param index @zh 待移除元素的索引。@en The index of the element to be removed.
+ * @param array 数组。
+ * @param index 待移除元素的索引。
  */
 export function removeAt<T> (array: T[], index: number) {
     array.splice(index, 1);
@@ -45,8 +46,8 @@ export function removeAt<T> (array: T[], index: number) {
  * @en
  * Removes the array item at the specified index.
  * It's faster but the order of the array will be changed.
- * @param array @zh 被操作的数组。@en The array to be operated.
- * @param index @zh 待移除元素的索引。@en The index of the element to be removed.
+ * @param array 数组。
+ * @param index 待移除元素的索引。
  */
 export function fastRemoveAt<T> (array: T[], index: number) {
     const length = array.length;
@@ -63,8 +64,8 @@ export function fastRemoveAt<T> (array: T[], index: number) {
  * @en
  * Removes the first occurrence of a specific object from the array.
  * Decision of the equality of elements is similar to `Array.prototype.indexOf`.
- * @param array @zh 被操作的数组。@en The array to be operated.
- * @param value @zh 待移除元素。@en The value to be removed.
+ * @param array 数组。
+ * @param value 待移除元素。
  */
 export function remove<T> (array: T[], value: T) {
     const index = array.indexOf(value);
@@ -84,8 +85,8 @@ export function remove<T> (array: T[], value: T) {
  * Removes the first occurrence of a specific object from the array.
  * Decision of the equality of elements is similar to `Array.prototype.indexOf`.
  * It's faster but the order of the array will be changed.
- * @param array @zh 被操作的数组。@en The array to be operated.
- * @param value @zh 待移除元素。@en The value to be removed.
+ * @param array 数组。
+ * @param value 待移除元素。
  */
 export function fastRemove<T> (array: T[], value: T) {
     const index = array.indexOf(value);
@@ -100,8 +101,8 @@ export function fastRemove<T> (array: T[], value: T) {
  * 移除首个使谓词满足的数组元素。
  * @en
  * Removes the first occurrence of a specific object from the array where `predicate` is `true`.
- * @param array @zh 被操作的数组。@en The array to be operated.
- * @param predicate @zh 一元谓词，如果要元素的话，需要返回 true。@en unary predicate which returns true if the element should be removed.
+ * @param array 数组。
+ * @param predicate 谓词。
  */
 export function removeIf<T> (array: T[], predicate: (value: T) => boolean) {
     const index = array.findIndex(predicate);
@@ -119,9 +120,9 @@ export function removeIf<T> (array: T[], predicate: (value: T) => boolean) {
  * @en
  * Verify array's Type.
  * This function tests each element using `instanceof` operator.
- * @param array @zh 待验证的数组。@en The array to be verified.
- * @param type @zh 用来判断数组元素的数据类型。@en The type used to verify the element type.
- * @returns @zh 当每一个元素都是指定类型时返回 `true`，否则返回 `false`。@en Return true if all elements of the array is the same type, false others.
+ * @param array 数组。
+ * @param type 类型。
+ * @returns 当每一个元素都是指定类型时返回 `true`，否则返回 `false`。
  */
 export function verifyType<T extends Function> (array: any[], type: T): array is T[] {
     if (array && array.length > 0) {
@@ -140,9 +141,8 @@ export function verifyType<T extends Function> (array: any[], type: T): array is
  * 移除多个数组元素。
  * @en
  * Removes multiple array elements.
- * @param array @zh 被操作的数组。@en The array to be operated.
- * @param removals @zh 所有待移除的元素。此数组的每个元素所对应的首个源数组的元素都会被移除。
- *                 @en The values to be removed. If a value appears multiple times in the array, only the first math element will be removed.
+ * @param array 源数组。
+ * @param removals 所有待移除的元素。此数组的每个元素所对应的首个源数组的元素都会被移除。
  */
 export function removeArray<T> (array: T[], removals: T[]) {
     for (let i = 0, l = removals.length; i < l; i++) {
@@ -155,10 +155,10 @@ export function removeArray<T> (array: T[], removals: T[]) {
  * 在数组的指定索引上插入对象。
  * @en
  * Inserts some objects at specified index.
- * @param array @zh 被操作的数组。@en The array to be operated.
- * @param objects @zh 插入的所有对象。@en The objects to be inserted.
- * @param index @zh 插入的索引。@en The index to insert at.
- * @returns @zh 传入的 `array`。@en The passed in `array`.
+ * @param array 数组。
+ * @param objects 插入的所有对象。
+ * @param index 插入的索引。
+ * @returns `array`。
  */
 export function appendObjectsAt<T> (array: T[], objects: T[], index: number) {
     array.splice.apply(array, [index, 0, ...objects]);
@@ -170,9 +170,7 @@ export function appendObjectsAt<T> (array: T[], objects: T[], index: number) {
  * 返回数组是否包含指定的元素。
  * @en
  * Determines whether the array contains a specific element.
- * @param array @zh 被查询的数组 @en The array to be checked.
- * @param value @zh 用来查询的值 @en The value used to check for.
- * @returns @zh true 如果包含该元素，否则返回 false。@en true if contains the value, false else.
+ * @returns 返回数组是否包含指定的元素。
  */
 export function contains<T> (array: T[], value: T) {
     return array.indexOf(value) >= 0;
@@ -183,8 +181,8 @@ export function contains<T> (array: T[], value: T) {
  * 拷贝数组。
  * @en
  * Copy an array.
- * @param array @zh 用来拷贝的数组。@en The array to be copied from.
- * @returns @zh 数组的副本。@en A new array has the same values as `array`.
+ * @param 源数组。
+ * @returns 数组的副本。
  */
 export function copy<T> (array: T[]) {
     const len = array.length;

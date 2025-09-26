@@ -1,7 +1,5 @@
 'use strict';
 
-const { updateElementReadonly, updateElementInvalid } = require('../utils/assets');
-
 const path = require('path');
 
 const Direction = {
@@ -13,7 +11,7 @@ const Direction = {
     back: 'back ( -Z )',
 };
 
-exports.template = /* html */`
+exports.template = `
 <section class="asset-texture-cube">
     <div class="assets"></div>
     <div class="preview">
@@ -23,8 +21,16 @@ exports.template = /* html */`
 </section>
 `;
 
-exports.style = /* css */`
+exports.$ = {
+    container: '.asset-texture-cube',
+    assets: '.assets',
+    images: '.images',
+    panel: '.panel',
+};
+
+exports.style = `
   .asset-texture-cube > .preview {
+    background: var(--color-normal-fill-emphasis);
     padding: 20px;
     margin-top: 10px;
   }
@@ -38,7 +44,7 @@ exports.style = /* css */`
     line-height: var(--size);
     width: var(--size);
     height: var(--size);
-    background-color: var(--color-normal-fill-emphasis);
+    background: var(--color-normal-fill);
     text-align: center;
   }
   .asset-texture-cube > .preview > .images > ui-drag-item > .top {
@@ -71,13 +77,6 @@ exports.style = /* css */`
   }
 `;
 
-exports.$ = {
-    container: '.asset-texture-cube',
-    assets: '.assets',
-    images: '.images',
-    panel: '.panel',
-};
-
 const Elements = {
     assets: {
         ready() {
@@ -97,7 +96,7 @@ const Elements = {
                 prop.appendChild(asset);
                 asset.setAttribute('slot', 'content');
                 asset.setAttribute('droppable', 'cc.ImageAsset');
-                asset.addEventListener('confirm', panel.change.bind(panel, key));
+                asset.addEventListener('confirm', panel.dataChange.bind(panel, key));
 
                 panel.$[`${key}-asset`] = asset;
             }
@@ -107,8 +106,8 @@ const Elements = {
 
             for (const key in Direction) {
                 panel.$[`${key}-asset`].value = panel.meta.userData[key] || '';
-                updateElementInvalid.call(panel, panel.$[`${key}-asset`], key);
-                updateElementReadonly.call(panel, panel.$[`${key}-asset`]);
+                panel.updateInvalid(panel.$[`${key}-asset`], key);
+                panel.updateReadonly(panel.$[`${key}-asset`]);
             }
         },
     },
@@ -130,7 +129,7 @@ const Elements = {
                 image.setAttribute('droppable', 'cc.ImageAsset');
                 image.setAttribute('class', key);
                 image.setAttribute('placeholder', key);
-                image.addEventListener('confirm', panel.change.bind(panel, key));
+                image.addEventListener('confirm', panel.dataChange.bind(panel, key));
 
                 panel.$[`${key}-drag-item`] = dragItem;
                 panel.$[`${key}-image`] = image;
@@ -164,12 +163,12 @@ const Elements = {
                         },
                     ]),
                 );
-                updateElementInvalid.call(panel, panel.$[`${key}-drag-item`], key);
-                updateElementReadonly.call(panel, panel.$[`${key}-drag-item`]);
+                panel.updateInvalid(panel.$[`${key}-drag-item`], key);
+                panel.updateReadonly(panel.$[`${key}-drag-item`]);
 
                 panel.$[`${key}-image`].value = value;
-                updateElementInvalid.call(panel, panel.$[`${key}-image`], key);
-                updateElementReadonly.call(panel, panel.$[`${key}-image`]);
+                panel.updateInvalid(panel.$[`${key}-image`], key);
+                panel.updateReadonly(panel.$[`${key}-image`]);
             }
         },
         close() {
@@ -183,37 +182,10 @@ const Elements = {
             this.$.panel.addEventListener('change', () => {
                 this.dispatch('change');
             });
-            this.$.panel.addEventListener('snapshot', () => {
-                this.dispatch('snapshot');
-            });
         },
         update() {
             this.$.panel.update(this.assetList, this.metaList);
         },
-    },
-};
-
-exports.methods = {
-    change(key, event) {
-        this.metaList.forEach((meta) => {
-            if (this.dragStart.exchange && this.dragStart.exchange.value) {
-                const exchangeValue = meta.userData[key] || '';
-                meta.userData[this.dragStart.exchange.key] = exchangeValue;
-            }
-
-            meta.userData[key] = event.target.value || undefined;
-        });
-
-        this.dispatch('change');
-        this.dispatch('snapshot');
-
-        Elements.assets.update.call(this);
-        Elements.images.update.call(this);
-    },
-    dragStart(key, event) {
-        const additional = JSON.parse(event.currentTarget.getAttribute('additional'));
-        this.dragStart.exchange = additional[0];
-        this.dragStart.exchange.key = key;
     },
 };
 
@@ -247,4 +219,40 @@ exports.close = function() {
             element.close.call(this);
         }
     }
+};
+
+exports.methods = {
+    updateInvalid(element, prop) {
+        const invalid = this.metaList.some((meta) => {
+            return meta.userData[prop] !== this.meta.userData[prop];
+        });
+        element.invalid = invalid;
+    },
+    updateReadonly(element) {
+        if (this.asset.readonly) {
+            element.setAttribute('disabled', true);
+        } else {
+            element.removeAttribute('disabled');
+        }
+    },
+    dataChange(key, event) {
+        this.metaList.forEach((meta) => {
+            if (this.dragStart.exchange && this.dragStart.exchange.value) {
+                const exchangeValue = meta.userData[key] || '';
+                meta.userData[this.dragStart.exchange.key] = exchangeValue;
+            }
+
+            meta.userData[key] = event.target.value || undefined;
+        });
+
+        this.dispatch('change');
+
+        Elements.assets.update.call(this);
+        Elements.images.update.call(this);
+    },
+    dragStart(key, event) {
+        const additional = JSON.parse(event.currentTarget.getAttribute('additional'));
+        this.dragStart.exchange = additional[0];
+        this.dragStart.exchange.key = key;
+    },
 };

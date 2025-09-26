@@ -467,7 +467,7 @@ void HttpClient::processResponse(HttpResponse *response, char *responseMessage) 
             break;
 
         default:
-            CC_ABORT();
+            CC_ASSERT(false);
             break;
     }
 

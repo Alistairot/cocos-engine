@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2021 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -28,7 +29,7 @@
 namespace cc {
 
 namespace {
-ccstd::unordered_map<gfx::FormatType, ccstd::string> typeMap{
+Record<gfx::FormatType, ccstd::string> typeMap{
     {gfx::FormatType::UNORM, "Uint"},
     {gfx::FormatType::SNORM, "Int"},
     {gfx::FormatType::UINT, "Uint"},
@@ -52,7 +53,7 @@ ccstd::string getDataViewType(const gfx::FormatInfo &info) {
 
 } // namespace
 
-using DataVariant = ccstd::variant<ccstd::monostate, int32_t, float>;
+using DataVariant = ccstd::variant<int32_t, float>;
 using MapBufferCallback = std::function<DataVariant(const DataVariant &cur, uint32_t idx, const DataView &view)>;
 
 DataView mapBuffer(DataView &target,
@@ -101,21 +102,11 @@ DataView mapBuffer(DataView &target,
             const uint32_t y = x + componentBytesLength * iComponent;
             if (isFloat) {
                 float cur = target.getFloat32(y);
-                auto dataVariant = callback(cur, iComponent, target);
-                if (ccstd::holds_alternative<float>(dataVariant)) {
-                    out->setFloat32(y, ccstd::get<float>(dataVariant));
-                } else {
-                    CC_LOG_ERROR("mapBuffer, wrong data type, expect float");
-                }
+                out->setFloat32(y, ccstd::get<1>(callback(cur, iComponent, target)));
             } else {
                 int32_t cur = target.readInt(intReader, y);
                 // iComponent is usually more useful than y
-                auto dataVariant = callback(cur, iComponent, target);
-                if (ccstd::holds_alternative<int32_t>(dataVariant)) {
-                    (target.*intWritter)(y, ccstd::get<int32_t>(dataVariant));
-                } else {
-                    CC_LOG_ERROR("mapBuffer, wrong data type, expect int32_t");
-                }
+                (target.*intWritter)(y, ccstd::get<0>(callback(cur, iComponent, target)));
             }
         }
     }

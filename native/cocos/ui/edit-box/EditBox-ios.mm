@@ -53,7 +53,8 @@
 #include "EditBox.h"
 #include "cocos/bindings/jswrapper/SeApi.h"
 #include "cocos/bindings/manual/jsb_global.h"
-#include "engine/EngineEvents.h"
+#include "cocos/bindings/event/EventDispatcher.h"
+#include "cocos/bindings/event/CustomEventTypes.h""
 #import <UIKit/UIKit.h>
 
 #define ITEM_MARGIN_WIDTH               10
@@ -95,7 +96,6 @@ const bool INPUTBOX_HIDDEN = true; // Toggle if Inputbox is visible
  ************************************************************************/
 namespace {
 static bool g_isMultiline{false};
-static bool g_confirmHold{false};
 static int g_maxLength{INT_MAX};
 se::Value textInputCallback;
 
@@ -181,12 +181,10 @@ CGRect getSafeAreaRect() {
         UIInterfaceOrientation orient = [UIApplication sharedApplication].statusBarOrientation;
         if (UIInterfaceOrientationLandscapeLeft == orient) {
             viewRect.origin.x = 0;
-            viewRect.size.width -= safeAreaInsets.left;
             viewRect.size.width -= safeAreaInsets.right;
         } else {
             viewRect.origin.x += safeAreaInsets.left;
             viewRect.size.width -= safeAreaInsets.left;
-            viewRect.size.width -= safeAreaInsets.right;
         }
     }
 
@@ -225,10 +223,8 @@ void onParentViewTouched(const cc::CustomEvent &touchEvent){
         return;
 
     // check length limit after text changed, a little rude
-    if (textView.text.length > g_maxLength) {
-        NSRange rangeIndex = [textView.text rangeOfComposedCharacterSequenceAtIndex:g_maxLength];
-        textView.text = [textView.text substringToIndex:rangeIndex.location];
-    }
+    if (textView.text.length > g_maxLength)
+        textView.text = [textView.text substringToIndex:g_maxLength];
     tViewOnView.text = textView.text;
     tViewOnToolbar.text = textView.text;
     callJSFunc("input", [textView.text UTF8String]);
@@ -293,10 +289,6 @@ static ButtonHandler*           btnHandler = nil;
     //recently there'ill be only 2 elements
     NSMutableDictionary<NSString*, InputBoxPair*>*      textInputDictionnary;
     InputBoxPair*                                       curView;
-
-    cc::events::Resize::Listener  resizeListener;
-    cc::events::Touch::Listener  touchListener;
-    cc::events::Close::Listener  closeListener;
 }
 static EditboxManager *instance = nil;
 
@@ -330,17 +322,14 @@ static EditboxManager *instance = nil;
             return nil;
         }
         
-        resizeListener.bind([&](int /*width*/, int /*height*/ , uint32_t /*windowId*/) {
+        cc::EventDispatcher::addCustomEventListener(EVENT_RESIZE, [&](const cc::CustomEvent& event) -> void {
                 [[EditboxManager sharedInstance] onOrientationChanged];
         });
         //"onTouchStart" is a sub event for TouchEvent, so we can only add listener for this sub event rather than TouchEvent itself.
-        touchListener.bind([&](const cc::TouchEvent& event) {
-            if(event.type == cc::TouchEvent::Type::BEGAN) {
-                cc::EditBox::complete();
-            }
+        cc::EventDispatcher::addCustomEventListener("onTouchStart", [&](const cc::CustomEvent& event) -> void {
+            cc::EditBox::complete();
         });
-
-        closeListener.bind([&]() {
+        cc::EventDispatcher::addCustomEventListener(EVENT_CLOSE, [&](const cc::CustomEvent& event) -> void {
             [[EditboxManager sharedInstance] dealloc];
         });
     }
@@ -554,7 +543,6 @@ static EditboxManager *instance = nil;
 - (void) show: (const cc::EditBox::ShowInfo*)showInfo {
     g_maxLength = showInfo->maxLength;
     g_isMultiline = showInfo->isMultiline;
-    g_confirmHold = showInfo->confirmHold;
     
     if (g_isMultiline) {
         curView = [self createTextView:showInfo];
@@ -566,22 +554,14 @@ static EditboxManager *instance = nil;
     
     [view addSubview:[curView inputOnView]];
     [[curView inputOnView] becomeFirstResponder];
-     dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.1 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
-         if(![[curView inputOnToolbar] becomeFirstResponder]) {
-             CC_LOG_ERROR("inputOnToolbar becomeFirstResponder error!");
-         }
-    });
-
+    [[curView inputOnToolbar] becomeFirstResponder];
 }
 // Change the focus point to the TextField or TextView on the toolbar.
 - (void) hide {
-   if ([[curView inputOnToolbar] isFirstResponder]) {
-       [[curView inputOnToolbar] resignFirstResponder];
-   }
-   if ([[curView inputOnView] isFirstResponder]) {
-       [[curView inputOnView] resignFirstResponder];
-   }
-   [[curView inputOnView] removeFromSuperview];
+    [[curView inputOnView] becomeFirstResponder];
+    [[curView inputOnView] removeFromSuperview];
+    [[curView inputOnToolbar] resignFirstResponder];
+    [[curView inputOnView] resignFirstResponder];
 }
 
 - (InputBoxPair*) getCurrentViewInUse {
@@ -599,8 +579,7 @@ static EditboxManager *instance = nil;
 - (IBAction)buttonTapped:(UIButton *)button {
     const ccstd::string text([[[EditboxManager sharedInstance]getCurrentText] UTF8String]);
     callJSFunc("confirm", text);
-    if (!g_confirmHold)
-        cc::EditBox::complete();
+    cc::EditBox::complete();
 }
 @end
 /*************************************************************************
@@ -618,12 +597,12 @@ void EditBox::show(const cc::EditBox::ShowInfo &showInfo) {
 
 void EditBox::hide() {
     [[EditboxManager sharedInstance] hide];
-    EditBox::_isShown = false;
+    EditBox::_isShown = true;
 }
 
 bool EditBox::complete() {
     if(!EditBox::_isShown)
-        return false;
+        return true;
     NSString *text = [[EditboxManager sharedInstance] getCurrentText];
     callJSFunc("complete", [text UTF8String]);
     EditBox::hide();

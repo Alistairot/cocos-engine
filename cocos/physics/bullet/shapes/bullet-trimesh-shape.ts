@@ -1,17 +1,18 @@
 /*
- Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2020 Xiamen Yaji Software Co., Ltd.
 
  https://www.cocos.com/
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -20,7 +21,7 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
-*/
+ */
 
 import { BulletShape } from './bullet-shape';
 import { warnID } from '../../../core';
@@ -29,11 +30,9 @@ import { MeshCollider } from '../../../../exports/physics-framework';
 import { cocos2BulletVec3, cocos2BulletTriMesh } from '../bullet-utils';
 import { ITrimeshShape } from '../../spec/i-physics-shape';
 import { BulletCache } from '../bullet-cache';
-import { bt, EBulletType } from '../instantiated';
-import { BulletBvhTriangleMeshShape } from '../bullet-bvh-triangle-mesh-shape';
+import { bt } from '../instantiated';
 
 export class BulletTrimeshShape extends BulletShape implements ITrimeshShape {
-    private btBVHMeshShape;
     public get collider () {
         return this._collider as MeshCollider;
     }
@@ -47,17 +46,16 @@ export class BulletTrimeshShape extends BulletShape implements ITrimeshShape {
         } else {
             const mesh = v;
             if (mesh && mesh.renderingSubMeshes.length > 0) {
+                const btTriangleMesh = this._getBtTriangleMesh(mesh);
                 if (this.collider.convex) {
-                    const btTriangleMesh = this._getBtTriangleMesh(mesh);
                     this._impl = bt.ConvexTriangleMeshShape_new(btTriangleMesh);
                 } else {
-                    this.btBVHMeshShape = BulletBvhTriangleMeshShape.getBulletBvhTriangleMeshShape(mesh.hash, mesh);
-                    this._impl = bt.ScaledBvhTriangleMeshShape_new(this.btBVHMeshShape.bulletBvhTriangleMeshShapePtr, 1, 1, 1);
+                    this._impl = bt.BvhTriangleMeshShape_new(btTriangleMesh, true, true);
                 }
                 const bt_v3 = BulletCache.instance.BT_V3_0;
                 cocos2BulletVec3(bt_v3, this._collider.node.worldScale);
-                bt.CollisionShape_setLocalScaling(this._impl, bt_v3);
                 bt.CollisionShape_setMargin(this._impl, 0.01);
+                bt.CollisionShape_setLocalScaling(this._impl, bt_v3);
                 this.setCompound(this._compound);
                 this.updateByReAdd();
                 this.setWrapper();
@@ -74,13 +72,7 @@ export class BulletTrimeshShape extends BulletShape implements ITrimeshShape {
     }
 
     onDestroy () {
-        if (this.collider.convex) {
-            if (this.refBtTriangleMesh) {
-                bt._safe_delete(this.refBtTriangleMesh, EBulletType.EBulletTypeTriangleMesh);
-            }
-        } else if (this.btBVHMeshShape) {
-            this.btBVHMeshShape.reference = false;
-        }
+        if (this.refBtTriangleMesh) { bt.TriangleMesh_del(this.refBtTriangleMesh); }
         super.onDestroy();
     }
 

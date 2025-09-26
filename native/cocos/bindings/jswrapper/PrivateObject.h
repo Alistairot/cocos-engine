@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2021 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -56,7 +57,7 @@ public:
     virtual const char *getName() const = 0;
     virtual void *getRaw() const = 0;
     virtual void allowDestroyInGC() const {
-        CC_ABORT();
+        CC_ASSERT(false);
     }
     virtual void tryAllowDestroyInGC() const {}
 
@@ -87,22 +88,16 @@ public:
     SharedPtrPrivateObject() = default;
     explicit SharedPtrPrivateObject(const std::shared_ptr<T> &ptr) : _data(ptr) {}
     explicit SharedPtrPrivateObject(std::shared_ptr<T> &&ptr) : _data(std::move(ptr)) {}
-    inline const std::shared_ptr<T> &getData() const {
+    inline const std::shared_ptr<T>& getData() const {
         return _data;
     }
 
-    inline std::shared_ptr<T> &getData() {
+    inline std::shared_ptr<T>& getData() {
         return _data;
     }
     constexpr bool isSharedPtr() const override { return true; }
 
-    void *getRaw() const override {
-        if constexpr (std::is_const_v<T>) {
-            return reinterpret_cast<void *>(const_cast<std::remove_const_t<T> *>(_data.get()));
-        } else {
-            return reinterpret_cast<void *>(_data.get());
-        }
-    }
+    void *getRaw() const override { return _data.get(); }
 
 private:
     std::shared_ptr<T> _data{nullptr};
@@ -116,22 +111,27 @@ public:
     explicit CCIntrusivePtrPrivateObject(cc::IntrusivePtr<T> &&p) : _ptr(std::move(p)) {}
     ~CCIntrusivePtrPrivateObject() override = default;
 
-    inline const cc::IntrusivePtr<T> &getData() const { return _ptr; }
-    inline cc::IntrusivePtr<T> &getData() { return _ptr; }
+    inline const cc::IntrusivePtr<T>& getData() const { return _ptr; }
+    inline cc::IntrusivePtr<T>& getData() { return _ptr; }
 
     inline void *getRaw() const override {
-        if constexpr (std::is_const_v<T>) {
-            return reinterpret_cast<void *>(const_cast<std::remove_const_t<T> *>(_ptr.get()));
-        } else {
-            return reinterpret_cast<void *>(_ptr.get());
-        }
+        return _ptr.get();
     }
     inline bool isCCIntrusivePtr() const override { return true; }
 
 private:
     cc::IntrusivePtr<T> _ptr;
+
     friend TypedPrivateObject<T>;
 };
+
+template <typename T>
+inline typename std::enable_if_t<std::is_destructible<T>::value, void> cctryDelete(T *t) {
+    delete t;
+}
+template <typename T>
+inline typename std::enable_if_t<!std::is_destructible<T>::value, void> cctryDelete(T *t) {
+}
 
 template <typename T>
 class RawRefPrivateObject final : public TypedPrivateObject<T> {
@@ -140,13 +140,13 @@ public:
     explicit RawRefPrivateObject(T *p) : _ptr(p) {}
     ~RawRefPrivateObject() override {
         static_assert(!std::is_same<T, void>::value, "void is not allowed!");
-        if constexpr (std::is_destructible<T>::value) {
-            if (_allowGC) {
-                delete _ptr;
-            }
+        if (_allowGC) {
+            cctryDelete(_ptr);
         }
         _ptr = nullptr;
     }
+
+    // bool *getValidAddr() { return &_validate; }
 
     void allowDestroyInGC() const override {
         _allowGC = true;
@@ -157,11 +157,7 @@ public:
 
     void *getRaw() const override {
         // CC_ASSERT(_validate);
-        if constexpr (std::is_const_v<T>) {
-            return reinterpret_cast<void *>(const_cast<std::remove_const_t<T> *>(_ptr));
-        } else {
-            return reinterpret_cast<void *>(_ptr);
-        }
+        return _ptr;
     }
 
 private:
@@ -175,7 +171,7 @@ inline std::shared_ptr<T> TypedPrivateObject<T>::share() {
     if (isSharedPtr()) {
         return reinterpret_cast<SharedPtrPrivateObject<T> *>(this)->getData();
     }
-    CC_ABORT();
+    CC_ASSERT(false);
     return std::shared_ptr<T>(nullptr);
 }
 template <typename T>
@@ -191,7 +187,7 @@ inline void inHeap(void *ptr) {
     auto anchor = reinterpret_cast<intptr_t>(&a);
     auto p = reinterpret_cast<intptr_t>(ptr);
     // must be in heaps
-    CC_ASSERT(std::abs(anchor - p) > r);
+    CC_ASSERT(abs(anchor - p) > r);
 }
 #endif
 

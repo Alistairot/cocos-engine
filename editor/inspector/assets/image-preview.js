@@ -1,6 +1,6 @@
 'use strict';
 
-exports.template = /* html */`
+exports.template = `
 <div class="image-preview">
     <ui-image class="image" show-alpha></ui-image>
     <div class="label">
@@ -9,7 +9,7 @@ exports.template = /* html */`
 </div>
 `;
 
-exports.style = /* css */`
+exports.style = `
     .image-preview {
         height: 200px;
         background: var(--color-normal-fill-emphasis);
@@ -51,8 +51,9 @@ exports.$ = {
  * attribute corresponds to the edit element
  */
 const Elements = {
-    image: {
+    imagePreview: {
         ready() {
+
             this.$.image.$img.addEventListener('load', () => {
                 this.$.size.innerHTML = `${this.$.image.$img.naturalWidth} x ${this.$.image.$img.naturalHeight}`;
             });
@@ -60,13 +61,39 @@ const Elements = {
         update() {
             const panel = this;
             panel.$.image.value = panel.asset.uuid;
-            this.$.size.innerHTML = '';
 
-
+            if (panel.assetList.length > 1) {
+                panel.$.container.style.display = 'none';
+            } else {
+                this.$.size.innerHTML = '';
+                panel.$.container.style.display = 'block';
+            }
         },
     },
 };
 
+/**
+ * Methods for automatic rendering of components
+ * @param assetList
+ * @param metaList
+ */
+exports.update = function(assetList, metaList) {
+    this.assetList = assetList;
+    this.metaList = metaList;
+    this.asset = assetList[0];
+    this.meta = metaList[0];
+
+    for (const prop in Elements) {
+        const element = Elements[prop];
+        if (element.update) {
+            element.update.call(this);
+        }
+    }
+};
+
+/**
+ * Method of initializing the panel
+ */
 exports.ready = function() {
     for (const prop in Elements) {
         const element = Elements[prop];
@@ -76,22 +103,15 @@ exports.ready = function() {
     }
 };
 
-exports.update = function(assetList, metaList) {
-    this.assetList = assetList;
-    this.metaList = metaList;
-    this.asset = assetList[0];
-    this.meta = metaList[0];
-
-    if (assetList.length > 1) {
-        this.$.container.style.display = 'none';
-    } else {
-        this.$.container.style.display = 'block';
-    }
-
+exports.close = function() {
     for (const prop in Elements) {
         const element = Elements[prop];
-        if (element.update) {
-            element.update.call(this);
+        if (element.close) {
+            element.close.call(this);
         }
     }
+};
+
+exports.methods = {
+
 };

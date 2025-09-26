@@ -1,10 +1,6 @@
-'use strict';
-
-const { updateElementReadonly } = require('../utils/assets');
-
 const texture = require('./texture/texture');
 
-const insertTemplate = /* html */`
+const insertTemplate = `
 <ui-prop>
     <ui-label slot="label" value="Width"></ui-label>
     <ui-num-input slot="content" class="width-input" min="1" step="1"></ui-num-input>
@@ -35,10 +31,6 @@ const Elements = Object.assign({}, texture.Elements, {
                 });
                 panel.dispatch('change');
             });
-
-            panel.$.widthInput.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
@@ -46,7 +38,7 @@ const Elements = Object.assign({}, texture.Elements, {
             panel.$.widthInput.value = panel.userData.width;
 
             panel.updateInvalid(panel.$.widthInput, 'width');
-            updateElementReadonly.call(panel, panel.$.widthInput);
+            panel.updateReadonly(panel.$.widthInput);
         },
     },
     height: {
@@ -59,10 +51,6 @@ const Elements = Object.assign({}, texture.Elements, {
                 });
                 panel.dispatch('change');
             });
-
-            panel.$.heightInput.addEventListener('confirm', () => {
-                panel.dispatch('snapshot');
-            });
         },
         update() {
             const panel = this;
@@ -70,7 +58,7 @@ const Elements = Object.assign({}, texture.Elements, {
             panel.$.heightInput.value = panel.userData.height;
 
             panel.updateInvalid(panel.$.heightInput, 'height');
-            updateElementReadonly.call(panel, panel.$.heightInput);
+            panel.updateReadonly(panel.$.heightInput);
         },
     },
 });

@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2021 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -20,16 +21,13 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
-****************************************************************************/
+ ****************************************************************************/
 #pragma once
 
 #include <cstdint>
 //#include "3d/skeletal-animation/DataPoolManager.h"
-#include "bindings/event/EventDispatcher.h"
-#include "core/event/Event.h"
 #include "core/memop/Pool.h"
 #include "renderer/pipeline/RenderPipeline.h"
-#include "renderer/pipeline/DebugView.h"
 #include "scene/DrawBatch2D.h"
 #include "scene/Light.h"
 #include "scene/Model.h"
@@ -51,21 +49,20 @@ namespace render {
 class PipelineRuntime;
 class Pipeline;
 } // namespace render
+class CallbacksInvoker;
 class Batcher2d;
 
-struct ISystemWindowInfo;
-class ISystemWindow;
+struct CC_DLL DebugViewConfig {
+    uint8_t singleMode;
+    uint8_t compositeModeBitCount;
+    uint32_t compositeModeValue;
+    bool lightingWithAlbedo;
+    bool csmLayerColoration;
+};
 
 class Root final {
-    IMPL_EVENT_TARGET(Root)
-    DECLARE_TARGET_EVENT_BEGIN(Root)
-    TARGET_EVENT_ARG0(BeforeCommit)
-    TARGET_EVENT_ARG0(BeforeRender)
-    TARGET_EVENT_ARG0(AfterRender)
-    TARGET_EVENT_ARG0(PipelineChanged)
-    DECLARE_TARGET_EVENT_END()
 public:
-    static Root *getInstance(); // cjh todo: put Root Managerment to Director class.
+    static Root *getInstance(); //cjh todo: put Root Managerment to Director class.
     explicit Root(gfx::Device *device);
     ~Root();
 
@@ -76,11 +73,10 @@ public:
     /**
      * @zh
      * 重置大小
-     * @param width 窗口宽度
-     * @param height 窗口高度
-     * @param windowId 窗口 ID
+     * @param width 屏幕宽度
+     * @param height 屏幕高度
      */
-    void resize(uint32_t width, uint32_t height, uint32_t windowId);
+    void resize(uint32_t width, uint32_t height);
 
     bool setRenderPipeline(pipeline::RenderPipeline *rppl = nullptr);
     void onGlobalPipelineStateChanged();
@@ -127,14 +123,6 @@ public:
 
     /**
      * @zh
-     * 创建一个系统窗口
-     * @param info 系统窗口描述信息
-     * @return 新创建的系统窗口 ID
-     */
-    static uint32_t createSystemWindow(const cc::ISystemWindowInfo &info);
-
-    /**
-     * @zh
      * 创建渲染场景
      * @param info 渲染场景描述信息
      */
@@ -153,27 +141,23 @@ public:
      */
     void destroyScenes();
 
-#ifndef SWIGCOCOS
     template <typename T, typename = std::enable_if_t<std::is_base_of<scene::Model, T>::value>>
     T *createModel() {
-        // cjh TODO: need use model pool?
+        //cjh TODO: need use model pool?
         T *model = ccnew T();
         model->initialize();
         return model;
     }
-#endif
 
     void destroyModel(scene::Model *model);
 
-#ifndef SWIGCOCOS
     template <typename T, typename = std::enable_if_t<std::is_base_of<scene::Light, T>::value>>
     T *createLight() {
-        // TODO(xwx): need use model pool?
+        //TODO(xwx): need use model pool?
         T *light = ccnew T();
         light->initialize();
         return light;
     }
-#endif
 
     void destroyLight(scene::Light *light);
 
@@ -189,15 +173,15 @@ public:
      * @zh
      * 主窗口
      */
-    inline scene::RenderWindow *getMainWindow() const { return _mainRenderWindow.get(); }
+    inline scene::RenderWindow *getMainWindow() const { return _mainWindow.get(); }
 
     /**
      * @zh
      * 当前窗口
      */
-    inline void setCurWindow(scene::RenderWindow *window) { _curRenderWindow = window; }
+    inline void setCurWindow(scene::RenderWindow *window) { _curWindow = window; }
 
-    inline scene::RenderWindow *getCurWindow() const { return _curRenderWindow.get(); }
+    inline scene::RenderWindow *getCurWindow() const { return _curWindow.get(); }
 
     /**
      * @zh
@@ -211,7 +195,7 @@ public:
      * @zh
      * 窗口列表
      */
-    inline const ccstd::vector<IntrusivePtr<scene::RenderWindow>> &getWindows() const { return _renderWindows; }
+    inline const ccstd::vector<IntrusivePtr<scene::RenderWindow>> &getWindows() const { return _windows; }
 
     /**
      * @zh
@@ -248,7 +232,8 @@ public:
      * @zh
      * 渲染调试数据
      */
-    inline pipeline::DebugView *getDebugView() const { return _debugView.get(); }
+    inline void setDebugViewConfig(const DebugViewConfig &config) { _debugViewConfig = config; }
+    inline const DebugViewConfig &getDebugViewConfig() const { return _debugViewConfig; }
 
     /**
      * @zh
@@ -286,35 +271,26 @@ public:
 
     inline bool isUsingDeferredPipeline() const { return _useDeferredPipeline; }
 
-    scene::RenderWindow *createRenderWindowFromSystemWindow(uint32_t windowId);
-    scene::RenderWindow *createRenderWindowFromSystemWindow(cc::ISystemWindow *window);
-
-    const ccstd::vector<scene::Camera *> &getCameraList() const {
-        return _cameraList;
-    }
-
-    void frameSync();
+    inline CallbacksInvoker *getEventProcessor() const { return _eventProcessor; }
 
 private:
     void frameMoveBegin();
-    void frameMoveProcess(bool isNeedUpdateScene, int32_t totalFrames);
+    void frameMoveProcess(bool isNeedUpdateScene, int32_t totalFrames, const ccstd::vector<IntrusivePtr<scene::RenderWindow>> &windows);
     void frameMoveEnd();
     void doXRFrameMove(int32_t totalFrames);
-    void addWindowEventListener();
-    void removeWindowEventListener();
 
     gfx::Device *_device{nullptr};
     gfx::Swapchain *_swapchain{nullptr};
     Batcher2d *_batcher{nullptr};
-    IntrusivePtr<scene::RenderWindow> _mainRenderWindow;
-    IntrusivePtr<scene::RenderWindow> _curRenderWindow;
+    IntrusivePtr<scene::RenderWindow> _mainWindow;
+    IntrusivePtr<scene::RenderWindow> _curWindow;
     IntrusivePtr<scene::RenderWindow> _tempWindow;
-    ccstd::vector<IntrusivePtr<scene::RenderWindow>> _renderWindows;
+    ccstd::vector<IntrusivePtr<scene::RenderWindow>> _windows;
     IntrusivePtr<pipeline::RenderPipeline> _pipeline{nullptr};
     std::unique_ptr<render::PipelineRuntime> _pipelineRuntime;
     //    IntrusivePtr<DataPoolManager>                  _dataPoolMgr;
     ccstd::vector<IntrusivePtr<scene::RenderScene>> _scenes;
-    std::unique_ptr<pipeline::DebugView> _debugView;
+    DebugViewConfig _debugViewConfig;
     float _cumulativeTime{0.F};
     float _frameTime{0.F};
     float _fpsTime{0.F};
@@ -322,14 +298,14 @@ private:
     uint32_t _fps{0};
     uint32_t _fixedFPS{0};
     bool _useDeferredPipeline{false};
-    bool _usesCustomPipeline{true};
+    bool _usesCustomPipeline{false};
+    CallbacksInvoker *_eventProcessor{nullptr};
     IXRInterface *_xr{nullptr};
-    events::WindowDestroy::Listener _windowDestroyListener;
-    events::WindowRecreated::Listener _windowRecreatedListener;
 
     // Cache ccstd::vector to avoid allocate every frame in frameMove
     ccstd::vector<scene::Camera *> _cameraList;
     ccstd::vector<gfx::Swapchain *> _swapchains;
     //
 };
+
 } // namespace cc

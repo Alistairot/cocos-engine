@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2021-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2021 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -262,12 +263,8 @@ const Vec3 *Mesh::getMaxPosition() const {
 ccstd::hash_t Mesh::getHash() {
     if (_hash == 0U) {
         ccstd::hash_t seed = 666;
-        if (_data.buffer()) {
-            ccstd::hash_range(seed, _data.buffer()->getData(), _data.buffer()->getData() + _data.length());
-            _hash = seed;
-        } else {
-            ccstd::hash_combine<ccstd::hash_t>(_hash, seed);
-        }
+        ccstd::hash_range(seed, _data.buffer()->getData(), _data.buffer()->getData() + _data.length());
+        _hash = seed;
     }
 
     return _hash;
@@ -654,8 +651,7 @@ bool Mesh::merge(Mesh *mesh, const Mat4 *worldMatrix /* = nullptr */, bool valid
                 attrSize = gfx::GFX_FORMAT_INFOS[static_cast<uint32_t>(attr.format)].size;
                 srcVBOffset = bundle.view.length + srcAttrOffset;
                 for (uint32_t v = 0; v < dstBundle.view.count; ++v) {
-                    // Important note: the semantics of subarray are different in typescript and native
-                    dstAttrView = dstVBView.subarray(dstBundle.view.offset + dstVBOffset, dstBundle.view.offset + dstVBOffset + attrSize);
+                    dstAttrView = dstVBView.subarray(dstVBOffset, dstVBOffset + attrSize);
                     vbView.set(dstAttrView, srcVBOffset);
                     if ((attr.name == gfx::ATTR_NAME_POSITION || attr.name == gfx::ATTR_NAME_NORMAL) && worldMatrix != nullptr) {
                         Float32Array f32Temp(vbView.buffer(), srcVBOffset, 3);
@@ -690,6 +686,7 @@ bool Mesh::merge(Mesh *mesh, const Mat4 *worldMatrix /* = nullptr */, bool valid
     // merge index buffer
     uint32_t idxCount = 0;
     uint32_t idxStride = 2;
+    uint32_t vertBatchCount = 0;
 
     ccstd::vector<Mesh::ISubMesh> primitives;
     primitives.resize(_struct.primitives.size());
@@ -701,7 +698,6 @@ bool Mesh::merge(Mesh *mesh, const Mat4 *worldMatrix /* = nullptr */, bool valid
         primitives[i].primitiveMode = prim.primitiveMode;
         primitives[i].vertexBundelIndices = prim.vertexBundelIndices;
 
-        uint32_t vertBatchCount = 0;
         for (const uint32_t bundleIdx : prim.vertexBundelIndices) {
             vertBatchCount = std::max(vertBatchCount, _struct.vertexBundles[bundleIdx].view.count);
         }
@@ -1074,7 +1070,7 @@ void Mesh::updateSubMesh(index_t primitiveIndex, const IDynamicGeometry &geometr
         auto *dstBuffer = _data.buffer()->getData() + bundle.view.offset;
         const auto *srcBuffer = vertices.buffer()->getData() + vertices.byteOffset();
         auto *vertexBuffer = subMesh->getVertexBuffers()[index];
-        CC_ASSERT_LE(vertexCount, info.maxSubMeshVertices);
+        CC_ASSERT(vertexCount <= info.maxSubMeshVertices);
 
         if (updateSize > 0U) {
             std::memcpy(dstBuffer, srcBuffer, updateSize);
@@ -1094,7 +1090,7 @@ void Mesh::updateSubMesh(index_t primitiveIndex, const IDynamicGeometry &geometr
         const auto *srcBuffer = (stride == sizeof(uint16_t)) ? geometry.indices16.value().buffer()->getData() + geometry.indices16.value().byteOffset()
                                                              : geometry.indices32.value().buffer()->getData() + geometry.indices32.value().byteOffset();
         auto *indexBuffer = subMesh->getIndexBuffer();
-        CC_ASSERT_LE(indexCount, info.maxSubMeshIndices);
+        CC_ASSERT(indexCount <= info.maxSubMeshIndices);
 
         if (updateSize > 0U) {
             std::memcpy(dstBuffer, srcBuffer, updateSize);
@@ -1170,7 +1166,7 @@ void Mesh::tryConvertVertexData() {
         const uint32_t stride = view.stride;
         uint32_t dstStride = stride;
 
-        CC_ASSERT_EQ(count * stride == length);
+        CC_ASSERT(count * stride == length);
 
         checkAttributesNeedConvert(orignalAttributes, attributes, attributeIndicsNeedConvert, dstStride);
         if (attributeIndicsNeedConvert.empty()) {
@@ -1217,7 +1213,7 @@ void Mesh::tryConvertVertexData() {
                         convertRGBA32FToRGBA16F(pValue, pDst);
                     } break;
                     default:
-                        CC_ABORT();
+                        CC_ASSERT(false);
                         break;
                 }
 
@@ -1226,7 +1222,7 @@ void Mesh::tryConvertVertexData() {
                 srcIndex += formatInfo.size;
             }
 
-            CC_ASSERT_EQ(wroteBytes, dstStride);
+            CC_ASSERT(wroteBytes == dstStride);
         }
 
         // update stride & length
@@ -1256,6 +1252,10 @@ gfx::BufferList Mesh::createVertexBuffers(gfx::Device *gfxDevice, ArrayBuffer *d
 void Mesh::initDefault(const ccstd::optional<ccstd::string> &uuid) {
     Super::initDefault(uuid);
     reset({});
+}
+
+bool Mesh::validate() const {
+    return !_renderingSubMeshes.empty() && !_data.empty();
 }
 
 void Mesh::setAllowDataAccess(bool allowDataAccess) {

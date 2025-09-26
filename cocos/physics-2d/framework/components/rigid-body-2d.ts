@@ -1,40 +1,16 @@
-/*
- Copyright (c) 2022-2023 Xiamen Yaji Software Co., Ltd.
-
- https://www.cocos.com/
-
- Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
-
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
-
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- THE SOFTWARE.
-*/
-
 import { EDITOR } from 'internal:constants';
 import { IRigidBody2D } from '../../spec/i-rigid-body';
-import { _decorator, Vec2, IVec2Like, cclegacy, CCBoolean, CCFloat } from '../../../core';
+import { _decorator, Vec2, Component, error, Layers, IVec2Like } from '../../../core';
 import { ERigidBody2DType } from '../physics-types';
-import { createRigidBody } from '../physics-selector';
+import { ccclass } from '../../../core/data/class-decorator';
+import { createRigidBody } from '../instance';
+import { Joint2D } from './joints/joint-2d';
 import { PhysicsGroup } from '../../../physics/framework/physics-enum';
-import { Component } from '../../../scene-graph';
-import { help, serializable, tooltip } from '../../../core/data/decorators';
+import { legacyCC } from '../../../core/global-exports';
 
-const { property, type, menu, ccclass } = _decorator;
+const { property, type, menu } = _decorator;
 
 @ccclass('cc.RigidBody2D')
-@help('i18n:cc.RigidBody2D')
 @menu('Physics2D/RigidBody2D')
 export class RigidBody2D extends Component {
     /**
@@ -44,7 +20,6 @@ export class RigidBody2D extends Component {
      * 获取或设置分组。
      */
     @type(PhysicsGroup)
-    @tooltip('i18n:physics2d.rigidbody.group')
     public get group (): number {
         return this._group;
     }
@@ -52,8 +27,7 @@ export class RigidBody2D extends Component {
         this._group = v;
     }
 
-    @serializable
-    @tooltip('i18n:physics2d.rigidbody.enabledContactListener')
+    @property
     enabledContactListener = false;
 
     /**
@@ -69,8 +43,7 @@ export class RigidBody2D extends Component {
      *  - 所有刚体都被禁止从 运动刚体 和 静态刚体 中穿过。此选项只关注于 动态刚体。
      *  - 应该尽量少的使用此选项，因为它会增加程序处理时间。
      */
-    @serializable
-    @tooltip('i18n:physics2d.rigidbody.bullet')
+    @property
     bullet = false;
 
     /**
@@ -80,7 +53,6 @@ export class RigidBody2D extends Component {
      * 刚体类型： Static, Kinematic, Dynamic or Animated.
      */
     @type(ERigidBody2DType)
-    @tooltip('i18n:physics2d.rigidbody.type')
     get type (): ERigidBody2DType {
         return this._type;
     }
@@ -103,8 +75,7 @@ export class RigidBody2D extends Component {
      * 如果此刚体永远都不应该进入睡眠，那么设置这个属性为 false。
      * 需要注意这将使 CPU 占用率提高。
      */
-    @type(CCBoolean)
-    @tooltip('i18n:physics2d.rigidbody.allowSleep')
+    @property
     get allowSleep (): boolean {
         return this._allowSleep;
     }
@@ -119,10 +90,9 @@ export class RigidBody2D extends Component {
      * @en
      * Scale the gravity applied to this body.
      * @zh
-     * 缩放应用在此刚体上的重力值。
+     * 缩放应用在此刚体上的重力值
      */
-    @type(CCFloat)
-    @tooltip('i18n:physics2d.rigidbody.gravityScale')
+    @property
     get gravityScale (): number {
         return this._gravityScale;
     }
@@ -141,8 +111,7 @@ export class RigidBody2D extends Component {
      * @zh
      * Linear damping 用于衰减刚体的线性速度。衰减系数可以大于 1，但是当衰减系数比较大的时候，衰减的效果会变得比较敏感。
      */
-    @type(CCFloat)
-    @tooltip('i18n:physics2d.rigidbody.linearDamping')
+    @property
     get linearDamping (): number {
         return this._linearDamping;
     }
@@ -161,8 +130,7 @@ export class RigidBody2D extends Component {
      * @zh
      * Angular damping 用于衰减刚体的角速度。衰减系数可以大于 1，但是当衰减系数比较大的时候，衰减的效果会变得比较敏感。
      */
-    @type(CCFloat)
-    @tooltip('i18n:physics2d.rigidbody.angularDamping')
+    @property
     get angularDamping (): number {
         return this._angularDamping;
     }
@@ -177,10 +145,9 @@ export class RigidBody2D extends Component {
      * @en
      * The linear velocity of the body's origin in world co-ordinates.
      * @zh
-     * 刚体在世界坐标下的线性速度。
+     * 刚体在世界坐标下的线性速度
      */
-    @type(Vec2)
-    @tooltip('i18n:physics2d.rigidbody.linearVelocity')
+    @property
     get linearVelocity (): Vec2 {
         if (this._body) {
             this._body.getLinearVelocity(this._linearVelocity);
@@ -198,10 +165,9 @@ export class RigidBody2D extends Component {
      * @en
      * The angular velocity of the body.
      * @zh
-     * 刚体的角速度。
+     * 刚体的角速度
      */
-    @type(CCFloat)
-    @tooltip('i18n:physics2d.rigidbody.angularVelocity')
+    @property
     get angularVelocity (): number {
         if (this._body) {
             this._angularVelocity = this._body.getAngularVelocity();
@@ -219,10 +185,9 @@ export class RigidBody2D extends Component {
      * @en
      * Should this body be prevented from rotating?
      * @zh
-     * 是否禁止此刚体进行旋转。
+     * 是否禁止此刚体进行旋转
      */
-    @type(CCBoolean)
-    @tooltip('i18n:physics2d.rigidbody.fixedRotation')
+    @property
     get fixedRotation (): boolean {
         return this._fixedRotation;
     }
@@ -235,12 +200,11 @@ export class RigidBody2D extends Component {
 
     /**
      * @en
-     * Whether to wake up this rigid body during initialization.
+     * Whether to wake up this rigid body during initialization
      * @zh
-     * 是否在初始化时唤醒此刚体。
+     * 是否在初始化时唤醒此刚体
      */
-    @serializable
-    @tooltip('i18n:physics2d.rigidbody.awakeOnLoad')
+    @property
     awakeOnLoad = true;
 
     // /**
@@ -281,7 +245,7 @@ export class RigidBody2D extends Component {
      * @en
      * Whether the rigid body is awake.
      * @zh
-     * 获取刚体是否正在休眠。
+     * 获取刚体是否正在休眠
      */
     isAwake () {
         if (this._body) {
@@ -331,13 +295,13 @@ export class RigidBody2D extends Component {
     /**
      * @en
      * Apply a force at a world point. If the force is not
-     * applied at the center of mass, it will generate a torque and
-     * affect the angular velocity.
+	 * applied at the center of mass, it will generate a torque and
+	 * affect the angular velocity.
      * @zh
      * 施加一个力到刚体上的一个点。如果力没有施加到刚体的质心上，还会产生一个扭矩并且影响到角速度。
-     * @param force @en the world force vector. @zh 世界坐标系下的力。
-     * @param point @en the world position. @zh 世界坐标系下的力的作用点。
-     * @param wake @en also wake up the body. @zh 唤醒刚体。
+     * @param force - the world force vector.
+     * @param point - the world position.
+     * @param wake - also wake up the body.
      */
     applyForce (force: Vec2, point: Vec2, wake: boolean) {
         if (this._body) {
@@ -350,8 +314,8 @@ export class RigidBody2D extends Component {
      * Apply a force to the center of mass.
      * @zh
      * 施加一个力到刚体上的质心上。
-     * @param force @en the world force vector. @zh 世界坐标系下的力。
-     * @param wake @en also wake up the body. @zh 唤醒刚体。
+     * @param force - the world force vector.
+     * @param wake - also wake up the body.
      */
     applyForceToCenter (force: Vec2, wake: boolean) {
         if (this._body) {
@@ -363,9 +327,9 @@ export class RigidBody2D extends Component {
      * @en
      * Apply a torque. This affects the angular velocity.
      * @zh
-     * 施加一个扭矩力，将影响刚体的角速度。
-     * @param torque @en about the z-axis (out of the screen), usually in N-m. @zh 扭矩 N-m。
-     * @param wake @en also wake up the body @zh 唤醒刚体。
+     * 施加一个扭矩力，将影响刚体的角速度
+     * @param torque - about the z-axis (out of the screen), usually in N-m.
+     * @param wake - also wake up the body
      */
     applyTorque (torque: number, wake: boolean) {
         if (this._body) {
@@ -376,14 +340,14 @@ export class RigidBody2D extends Component {
     /**
      * @en
      * Apply a impulse at a world point, this immediately modifies the velocity.
-     * If the impulse is not applied at the center of mass, it will generate a torque and
-     * affect the angular velocity.
+	 * If the impulse is not applied at the center of mass, it will generate a torque and
+	 * affect the angular velocity.
      * @zh
      * 施加冲量到刚体上的一个点，将立即改变刚体的线性速度。
      * 如果冲量施加到的点不是刚体的质心，那么将产生一个扭矩并影响刚体的角速度。
-     * @param impulse @en the world impulse vector, usually in N-seconds or kg-m/s. @zh 冲量 N-seconds 或者 kg-m/s。
-     * @param point @en the world position. @zh 世界坐标系下的作用点。
-     * @param wake @en also wake up the body. @zh 唤醒刚体。
+     * @param impulse - the world impulse vector, usually in N-seconds or kg-m/s.
+     * @param point - the world position
+     * @param wake - alse wake up the body
      */
     applyLinearImpulse (impulse: Vec2, point: Vec2, wake: boolean) {
         if (this._body) {
@@ -396,8 +360,9 @@ export class RigidBody2D extends Component {
      * Apply a impulse at the center of mass, this immediately modifies the velocity.
      * @zh
      * 施加冲量到刚体上的质心点，将立即改变刚体的线性速度。
-     * @param impulse @en the world impulse vector, usually in N-seconds or kg-m/s. @zh 冲量 N-seconds 或者 kg-m/s。
-     * @param wake @en also wake up the body @zh 唤醒刚体。
+     * @param impulse - the world impulse vector, usually in N-seconds or kg-m/s.
+     * @param point - the world position
+     * @param wake - alse wake up the body
      */
     applyLinearImpulseToCenter (impulse: Vec2, wake: boolean) {
         if (this._body) {
@@ -409,9 +374,9 @@ export class RigidBody2D extends Component {
      * @en
      * Apply an angular impulse.
      * @zh
-     * 施加一个角冲量。
-     * @param impulse @en the angular impulse in units of kg*m*m/s. @zh 角冲量 kg*m*m/s。
-     * @param wake @en also wake up the body. @zh 唤醒刚体。
+     * 施加一个角速度冲量。
+     * @param impulse - the angular impulse in units of kg*m*m/s
+     * @param wake - also wake up the body
      */
     applyAngularImpulse (impulse: number, wake: boolean) {
         if (this._body) {
@@ -423,10 +388,9 @@ export class RigidBody2D extends Component {
      * @en
      * Get the world linear velocity of a world point attached to this body.
      * @zh
-     * 获取刚体上指定点的线性速度。
-     * @param worldPoint @en a point in world coordinates. @zh 世界坐标系下的点。
-     * @param out @en optional, the returned world velocity. @zh 可选，返回的世界坐标系下的速度。
-     * @return @en the world linear velocity. @zh 指定点的世界坐标系下的速度。
+     * 获取刚体上指定点的线性速度
+     * @param worldPoint - a point in world coordinates.
+     * @param out - optional, the receiving point
      */
     getLinearVelocityFromWorldPoint<Out extends IVec2Like> (worldPoint: IVec2Like, out: Out): Out {
         if (this._body) {
@@ -434,15 +398,13 @@ export class RigidBody2D extends Component {
         }
         return out;
     }
-
     /**
      * @en
      * Converts a world coordinate point to the given rigid body coordinate.
      * @zh
-     * 将一个给定的世界坐标系下的向量转换为刚体本地坐标系下的向量。
-     * @param worldVector @en a vector in world coordinates. @zh 世界坐标系下的向量。
-     * @param out @en optional, the returned vector in local coordinate. @zh 可选，返回的本地坐标系下的向量。
-     * @return @en a vector in local coordinate. @zh 本地坐标系下的向量。
+     * 将一个给定的世界坐标系下的向量转换为刚体本地坐标系下的向量
+     * @param worldVector - a vector in world coordinates.
+     * @param out - optional, the receiving vector
      */
     getLocalVector<Out extends IVec2Like> (worldVector: IVec2Like, out: Out): Out {
         if (this._body) {
@@ -450,15 +412,13 @@ export class RigidBody2D extends Component {
         }
         return out;
     }
-
     /**
      * @en
      * Converts a given vector in this rigid body's local coordinate system to the world coordinate system
      * @zh
-     * 将一个给定的刚体本地坐标系下的向量转换为世界坐标系下的向量。
-     * @param localVector @en a vector in local coordinates. @zh 本地坐标系下的向量。
-     * @param out @en optional, the returned vector in world coordinate. @zh 可选，返回的世界坐标系下的向量。
-     * @return @en a vector in world coordinate. @zh 世界坐标系下的向量。
+     * 将一个给定的刚体本地坐标系下的向量转换为世界坐标系下的向量
+     * @param localVector - a vector in world coordinates.
+     * @param out - optional, the receiving vector
      */
     getWorldVector<Out extends IVec2Like> (localVector: IVec2Like, out: Out): Out {
         if (this._body) {
@@ -469,12 +429,11 @@ export class RigidBody2D extends Component {
 
     /**
      * @en
-     * Converts a given point in the world coordinate system to this rigid body's local coordinate system.
+     * Converts a given point in the world coordinate system to this rigid body's local coordinate system
      * @zh
-     * 将一个给定的世界坐标系下的点转换为刚体本地坐标系下的点。
-     * @param worldPoint @en a point in world coordinates. @zh 世界坐标系下的点。
-     * @param out @en optional, the returned point in local coordinate. @zh 可选，返回的本地坐标系下的点。
-     * @return @en a point in local coordinate. @zh 本地坐标系下的点。
+     * 将一个给定的世界坐标系下的点转换为刚体本地坐标系下的点
+     * @param worldPoint - a point in world coordinates.
+     * @param out - optional, the receiving point
      */
     getLocalPoint<Out extends IVec2Like> (worldPoint: IVec2Like, out: Out): Out {
         if (this._body) {
@@ -482,15 +441,13 @@ export class RigidBody2D extends Component {
         }
         return out;
     }
-
     /**
      * @en
-     * Converts a given point in this rigid body's local coordinate system to the world coordinate system.
+     * Converts a given point in this rigid body's local coordinate system to the world coordinate system
      * @zh
-     * 将一个给定的刚体本地坐标系下的点转换为世界坐标系下的点。
-     * @param localPoint @en a point in local coordinate. @zh 本地坐标系下的点。
-     * @param out @en optional, the returned point in world coordinate. @zh 可选，返回的世界坐标系下的点。
-     * @return @en a point in world coordinate. @zh 世界坐标系下的点。
+     * 将一个给定的刚体本地坐标系下的点转换为世界坐标系下的点
+     * @param localPoint - a point in local coordinates.
+     * @param out - optional, the receiving point
      */
     getWorldPoint<Out extends IVec2Like> (localPoint: IVec2Like, out: Out): Out {
         if (this._body) {
@@ -498,12 +455,11 @@ export class RigidBody2D extends Component {
         }
         return out;
     }
-
     /**
      * @en
      * Get the local position of the center of mass.
      * @zh
-     * 获取刚体本地坐标系下的质心。
+     * 获取刚体本地坐标系下的质心
      */
     getLocalCenter<Out extends IVec2Like> (out: Out): Out {
         if (this._body) {
@@ -511,12 +467,11 @@ export class RigidBody2D extends Component {
         }
         return out;
     }
-
     /**
      * @en
      * Get the world position of the center of mass.
      * @zh
-     * 获取刚体世界坐标系下的质心。
+     * 获取刚体世界坐标系下的质心
      */
     getWorldCenter<Out extends IVec2Like> (out: Out): Out {
         if (this._body) {
@@ -529,7 +484,7 @@ export class RigidBody2D extends Component {
      * @en
      * Get the rotational inertia of the body about the local origin.
      * @zh
-     * 获取刚体本地坐标系下原点的旋转惯性。
+     * 获取刚体本地坐标系下原点的旋转惯性
      */
     getInertia () {
         if (this._body) {
@@ -540,7 +495,7 @@ export class RigidBody2D extends Component {
 
     /// COMPONENT LIFECYCLE ///
     protected onLoad () {
-        if (!EDITOR || cclegacy.GAME_VIEW) {
+        if (!EDITOR || legacyCC.GAME_VIEW) {
             this._body = createRigidBody();
             this._body.initialize(this);
         }
@@ -569,30 +524,22 @@ export class RigidBody2D extends Component {
         return this._body;
     }
 
-    @serializable
+    @property
     private _group = PhysicsGroup.DEFAULT;
-
-    @serializable
+    @property
     private _type = ERigidBody2DType.Dynamic;
-
-    @serializable
+    @property
     private _allowSleep = true;
-
-    @serializable
+    @property
     private _gravityScale = 1;
-
-    @serializable
+    @property
     private _linearDamping = 0;
-
-    @serializable
+    @property
     private _angularDamping = 0;
-
-    @serializable
+    @property
     private _linearVelocity = new Vec2();
-
-    @serializable
+    @property
     private _angularVelocity = 0;
-
-    @serializable
+    @property
     private _fixedRotation = false;
 }

@@ -1,27 +1,3 @@
-/*
- Copyright (c) 2022-2023 Xiamen Yaji Software Co., Ltd.
-
- https://www.cocos.com/
-
- Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
-
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
-
- THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- THE SOFTWARE.
-*/
-
 import { TouchCallback } from 'pal/input';
 import { screenAdapter } from 'pal/screen-adapter';
 import { Size, Vec2 } from '../../../cocos/core/math';
@@ -31,15 +7,11 @@ import { touchManager } from '../touch-manager';
 import { macro } from '../../../cocos/core/platform/macro';
 import { InputEventType } from '../../../cocos/input/types/event-enum';
 
-declare const jsb: any;
-
 export class TouchInputSource {
     private _eventTarget: EventTarget = new EventTarget();
-    private _windowManager: any;
 
     constructor () {
         this._registerEvent();
-        this._windowManager = jsb.ISystemWindowManager.getInstance();
     }
 
     private _registerEvent () {
@@ -50,10 +22,10 @@ export class TouchInputSource {
     }
 
     private _createCallback (eventType: InputEventType) {
-        return (changedTouches: TouchList, windowId: number) => {
+        return (changedTouches: TouchList) => {
             const handleTouches: Touch[] = [];
             const length = changedTouches.length;
-            const windowSize = this._windowManager.getWindow(windowId).getViewSize();
+            const windowSize = screenAdapter.windowSize;
             for (let i = 0; i < length; ++i) {
                 const changedTouch = changedTouches[i];
                 const touchID = changedTouch.identifier;
@@ -73,7 +45,6 @@ export class TouchInputSource {
             if (handleTouches.length > 0) {
                 const eventTouch = new EventTouch(handleTouches, false, eventType,
                     macro.ENABLE_MULTI_TOUCH ? touchManager.getAllTouches() : handleTouches);
-                eventTouch.windowId = windowId;
                 this._eventTarget.emit(eventType, eventTouch);
             }
         };

@@ -68,7 +68,6 @@ CCProgram sky-fs %{
     #else
       vec3 c = SRGBToLinear(fragTextureLod(environmentMap, rotationDir.xyz, 0.0).rgb);
     #endif
-    vec4 color = CCFragOutput(vec4(c * cc_ambientSky.w, 1.0));
-    return color;
+    return CCFragOutput(vec4(c * cc_ambientSky.w, 1.0));
   }
 }%

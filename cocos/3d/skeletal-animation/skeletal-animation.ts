@@ -1,17 +1,18 @@
 /*
- Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2017-2020 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+  worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+  not use Cocos Creator software for developing other software or tools that's
+  used for developing games. You are not granted to publish, distribute,
+  sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -26,16 +27,19 @@ import {
     ccclass, executeInEditMode, executionOrder, help, menu, tooltip, type, serializable, editable,
 } from 'cc.decorator';
 import { SkinnedMeshRenderer } from '../skinned-mesh-renderer';
-import { Mat4, cclegacy, js, assertIsTrue } from '../../core';
+import { Mat4 } from '../../core/math';
 import { DataPoolManager } from './data-pool-manager';
-import { Node } from '../../scene-graph/node';
-import { AnimationClip } from '../../animation/animation-clip';
-import { Animation } from '../../animation/animation-component';
+import { Node } from '../../core/scene-graph/node';
+import { AnimationClip } from '../../core/animation/animation-clip';
+import { Animation } from '../../core/animation/animation-component';
 import { SkelAnimDataHub } from './skeletal-animation-data-hub';
 import { SkeletalAnimationState } from './skeletal-animation-state';
-import { getWorldTransformUntilRoot } from '../../animation/transform-utils';
-import type { AnimationState } from '../../animation/animation-state';
-import { getGlobalAnimationManager } from '../../animation/global-animation-manager';
+import { getWorldTransformUntilRoot } from '../../core/animation/transform-utils';
+import { legacyCC } from '../../core/global-exports';
+import { js } from '../../core/utils/js';
+import type { AnimationState } from '../../core/animation/animation-state';
+import { assertIsTrue } from '../../core/data/utils/asserts';
+import { getGlobalAnimationManager } from '../../core/animation/global-animation-manager';
 
 /**
  * @en The socket to synchronize transform from skeletal joint to target node.
@@ -176,7 +180,7 @@ export class SkeletalAnimation extends Animation {
 
     public onDestroy () {
         super.onDestroy();
-        (cclegacy.director.root.dataPoolManager as DataPoolManager).jointAnimationInfo.destroy(this.node.uuid);
+        (legacyCC.director.root.dataPoolManager as DataPoolManager).jointAnimationInfo.destroy(this.node.uuid);
         getGlobalAnimationManager().removeSockets(this.node, this._sockets);
         this._removeAllUsers();
     }
@@ -229,7 +233,7 @@ export class SkeletalAnimation extends Animation {
      */
     public querySockets () {
         const animPaths = (this._defaultClip && Object.keys(SkelAnimDataHub.getOrExtract(this._defaultClip).joints).sort()
-            .reduce((acc, cur) => (cur.startsWith(`${acc[acc.length - 1]}/`) ? acc : (acc.push(cur), acc)), [] as string[])) || [];
+            .reduce((acc, cur) => (cur.startsWith(acc[acc.length - 1]) ? acc : (acc.push(cur), acc)), [] as string[])) || [];
         if (!animPaths.length) { return ['please specify a valid default animation clip first']; }
         const out: string[] = [];
         for (let i = 0; i < animPaths.length; i++) {

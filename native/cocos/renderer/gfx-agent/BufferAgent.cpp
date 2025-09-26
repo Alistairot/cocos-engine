@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2020-2022 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -41,16 +42,22 @@ BufferAgent::~BufferAgent() {
         DeviceAgent::getInstance()->getMessageQueue(),
         BufferDestruct,
         actor, _actor,
-        stagingBuffer, std::move(_stagingBuffer),
+        stagingBuffers, _stagingBuffers,
         {
+            for (auto *buffer : stagingBuffers) {
+                free(buffer);
+            }
+
             CC_SAFE_DELETE(actor);
         });
 }
 
 void BufferAgent::doInit(const BufferInfo &info) {
     uint32_t size = getSize();
-    if (hasFlag(info.flags, BufferFlagBit::ENABLE_STAGING_WRITE) || (size > STAGING_BUFFER_THRESHOLD && hasFlag(_memUsage, MemoryUsageBit::HOST))) {
-        _stagingBuffer = std::make_unique<uint8_t[]>(size * DeviceAgent::MAX_FRAME_INDEX);
+    if (size > STAGING_BUFFER_THRESHOLD && hasFlag(_memUsage, MemoryUsageBit::HOST)) {
+        for (size_t i = 0; i < DeviceAgent::MAX_FRAME_INDEX; ++i) {
+            _stagingBuffers.push_back(reinterpret_cast<uint8_t *>(malloc(size)));
+        }
     }
 
     ENQUEUE_MESSAGE_2(
@@ -82,15 +89,26 @@ void BufferAgent::doInit(const BufferViewInfo &info) {
 void BufferAgent::doResize(uint32_t size, uint32_t /*count*/) {
     auto *mq = DeviceAgent::getInstance()->getMessageQueue();
 
-    if (_stagingBuffer) {
+    if (!_stagingBuffers.empty()) {
+        auto *oldStagingBuffers = mq->allocate<uint8_t *>(DeviceAgent::MAX_FRAME_INDEX);
+        for (size_t i = 0; i < DeviceAgent::MAX_FRAME_INDEX; ++i) {
+            oldStagingBuffers[i] = _stagingBuffers[i];
+        }
+        _stagingBuffers.clear();
         ENQUEUE_MESSAGE_1(
             mq, BufferFreeStagingBuffer,
-            stagingBuffer, std::move(_stagingBuffer),
-            {});
+            stagingBuffers, oldStagingBuffers,
+            {
+                for (size_t i = 0; i < DeviceAgent::MAX_FRAME_INDEX; ++i) {
+                    free(stagingBuffers[i]);
+                }
+            });
     }
 
-    if (hasFlag(_flags, BufferFlagBit::ENABLE_STAGING_WRITE) || (size > STAGING_BUFFER_THRESHOLD && hasFlag(_memUsage, MemoryUsageBit::HOST))) {
-        _stagingBuffer = std::make_unique<uint8_t[]>(size * DeviceAgent::MAX_FRAME_INDEX);
+    if (size > STAGING_BUFFER_THRESHOLD && hasFlag(_memUsage, MemoryUsageBit::HOST)) {
+        for (size_t i = 0; i < DeviceAgent::MAX_FRAME_INDEX; ++i) {
+            _stagingBuffers.push_back(reinterpret_cast<uint8_t *>(malloc(size)));
+        }
     }
 
     ENQUEUE_MESSAGE_2(
@@ -104,13 +122,26 @@ void BufferAgent::doResize(uint32_t size, uint32_t /*count*/) {
 
 void BufferAgent::doDestroy() {
     auto *mq = DeviceAgent::getInstance()->getMessageQueue();
+    uint8_t **oldStagingBuffers{nullptr};
+    if (!_stagingBuffers.empty()) {
+        oldStagingBuffers = mq->allocate<uint8_t *>(DeviceAgent::MAX_FRAME_INDEX);
+        for (size_t i = 0; i < DeviceAgent::MAX_FRAME_INDEX; ++i) {
+            oldStagingBuffers[i] = _stagingBuffers[i];
+        }
+        _stagingBuffers.clear();
+    }
 
     ENQUEUE_MESSAGE_2(
         mq, BufferDestroy,
         actor, getActor(),
-        stagingBuffer, std::move(_stagingBuffer),
+        stagingBuffers, oldStagingBuffers,
         {
             actor->destroy();
+            if (stagingBuffers) {
+                for (size_t i = 0; i < DeviceAgent::MAX_FRAME_INDEX; ++i) {
+                    free(stagingBuffers[i]);
+                }
+            }
         });
 }
 
@@ -134,36 +165,16 @@ void BufferAgent::update(const void *buffer, uint32_t size) {
         });
 }
 
-void BufferAgent::flush(const uint8_t *buffer) {
-    auto *mq = DeviceAgent::getInstance()->getMessageQueue();
-    ENQUEUE_MESSAGE_3(
-        mq, BufferUpdate,
-        actor, getActor(),
-        buffer, buffer,
-        size, _size,
-        {
-            actor->update(buffer, size);
-        });
-}
-
 void BufferAgent::getActorBuffer(const BufferAgent *buffer, MessageQueue *mq, uint32_t size, uint8_t **pActorBuffer, bool *pNeedFreeing) {
-    if (buffer->_stagingBuffer) { // for frequent updates on big buffers
+    if (!buffer->_stagingBuffers.empty()) { // for frequent updates on big buffers
         uint32_t frameIndex = DeviceAgent::getInstance()->getCurrentIndex();
-        *pActorBuffer = buffer->_stagingBuffer.get() + frameIndex * buffer->_size;
+        *pActorBuffer = buffer->_stagingBuffers[frameIndex];
     } else if (size > STAGING_BUFFER_THRESHOLD) { // less frequent updates on big buffers
         *pActorBuffer = reinterpret_cast<uint8_t *>(malloc(size));
         *pNeedFreeing = true;
     } else { // for small enough buffers
         *pActorBuffer = mq->allocate<uint8_t>(size);
     }
-}
-
-uint8_t *BufferAgent::getStagingAddress() const {
-    if (!_stagingBuffer) {
-        return nullptr;
-    }
-    uint32_t frameIndex = DeviceAgent::getInstance()->getCurrentIndex();
-    return _stagingBuffer.get() + _size * frameIndex;
 }
 
 } // namespace gfx

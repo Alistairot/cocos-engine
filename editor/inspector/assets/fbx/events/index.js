@@ -1,11 +1,10 @@
 'use strict';
 
 const { join } = require('path');
-const events = require('./events');
-
 module.paths.push(join(Editor.App.path, 'node_modules'));
 const Vue = require('vue/dist/vue.min.js');
 
+const events = require('./events');
 exports.ready = function() {
     this.eventVm = new Vue({
         el: this.$.events,
@@ -68,7 +67,6 @@ exports.addNewEvent = function(time) {
     this.events.eventsMap[this.curEditClipInfo.clipUUID] = userData.events;
     this.updateEventInfo();
     this.dispatch('change');
-    this.dispatch('snapshot');
 };
 
 exports.delEvent = function(time) {
@@ -77,7 +75,6 @@ exports.delEvent = function(time) {
     this.events.eventsMap[this.curEditClipInfo.clipUUID] = userData.events;
     this.updateEventInfo();
     this.dispatch('change');
-    this.dispatch('snapshot');
 };
 
 exports.updateEventInfo = function(time, eventInfos) {

@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2019-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2019-2022 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -23,11 +24,8 @@
 ****************************************************************************/
 
 #include "GFXDescriptorSet.h"
-#include "GFXBuffer.h"
 #include "GFXDescriptorSetLayout.h"
 #include "GFXObject.h"
-#include "GFXTexture.h"
-#include "states/GFXSampler.h"
 
 namespace cc {
 namespace gfx {
@@ -61,31 +59,25 @@ void DescriptorSet::destroy() {
 }
 
 void DescriptorSet::bindBuffer(uint32_t binding, Buffer *buffer, uint32_t index) {
-    const uint32_t descriptorIndex = _layout->getDescriptorIndices()[binding] + index;
-    const uint32_t newId = getObjectID(buffer);
-    if (_buffers[descriptorIndex].id != newId) {
-        _buffers[descriptorIndex].ptr = buffer;
-        _buffers[descriptorIndex].id = newId;
+    const uint32_t descriptorIndex = _layout->getDescriptorIndices()[binding];
+    if (_buffers[descriptorIndex + index] != buffer) {
+        _buffers[descriptorIndex + index] = buffer;
         _isDirty = true;
     }
 }
 
 void DescriptorSet::bindTexture(uint32_t binding, Texture *texture, uint32_t index) {
-    const uint32_t descriptorIndex = _layout->getDescriptorIndices()[binding] + index;
-    const uint32_t newId = getObjectID(texture);
-    if (_textures[descriptorIndex].id != newId) {
-        _textures[descriptorIndex].ptr = texture;
-        _textures[descriptorIndex].id = newId;
+    const uint32_t descriptorIndex = _layout->getDescriptorIndices()[binding];
+    if (_textures[descriptorIndex + index] != texture) {
+        _textures[descriptorIndex + index] = texture;
         _isDirty = true;
     }
 }
 
 void DescriptorSet::bindSampler(uint32_t binding, Sampler *sampler, uint32_t index) {
-    const uint32_t descriptorIndex = _layout->getDescriptorIndices()[binding] + index;
-    const uint32_t newId = getObjectID(sampler);
-    if (_samplers[descriptorIndex].id != newId) {
-        _samplers[descriptorIndex].ptr = sampler;
-        _samplers[descriptorIndex].id = newId;
+    const uint32_t descriptorIndex = _layout->getDescriptorIndices()[binding];
+    if (_samplers[descriptorIndex + index] != sampler) {
+        _samplers[descriptorIndex + index] = sampler;
         _isDirty = true;
     }
 }
@@ -110,7 +102,7 @@ Buffer *DescriptorSet::getBuffer(uint32_t binding, uint32_t index) const {
     if (binding >= descriptorIndices.size()) return nullptr;
     const uint32_t descriptorIndex = descriptorIndices[binding] + index;
     if (descriptorIndex >= _buffers.size()) return nullptr;
-    return _buffers[descriptorIndex].ptr;
+    return _buffers[descriptorIndex];
 }
 
 Texture *DescriptorSet::getTexture(uint32_t binding, uint32_t index) const {
@@ -118,7 +110,7 @@ Texture *DescriptorSet::getTexture(uint32_t binding, uint32_t index) const {
     if (binding >= descriptorIndices.size()) return nullptr;
     const uint32_t descriptorIndex = descriptorIndices[binding] + index;
     if (descriptorIndex >= _textures.size()) return nullptr;
-    return _textures[descriptorIndex].ptr;
+    return _textures[descriptorIndex];
 }
 
 Sampler *DescriptorSet::getSampler(uint32_t binding, uint32_t index) const {
@@ -126,7 +118,7 @@ Sampler *DescriptorSet::getSampler(uint32_t binding, uint32_t index) const {
     if (binding >= descriptorIndices.size()) return nullptr;
     const uint32_t descriptorIndex = descriptorIndices[binding] + index;
     if (descriptorIndex >= _samplers.size()) return nullptr;
-    return _samplers[descriptorIndex].ptr;
+    return _samplers[descriptorIndex];
 }
 
 } // namespace gfx

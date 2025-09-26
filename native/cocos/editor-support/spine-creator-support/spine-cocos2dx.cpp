@@ -107,7 +107,7 @@ void Cocos2dTextureLoader::load(AtlasPage &page, const spine::String &path) {
     if (spine::customTextureLoader) {
         texture = spine::customTextureLoader(path.buffer());
     }
-    CC_ASSERT_NOT_NULL(texture);
+    CC_ASSERT(texture != nullptr);
 
     if (texture) {
         texture->addRef();

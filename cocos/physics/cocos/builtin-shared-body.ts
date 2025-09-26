@@ -1,17 +1,18 @@
 /*
- Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2020 Xiamen Yaji Software Co., Ltd.
 
  https://www.cocos.com/
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -20,16 +21,18 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
-*/
+ */
 
-import { Mat4, Quat, Vec3, js, geometry } from '../../core';
+import { Mat4, Quat, Vec3 } from '../../core/math';
+import { intersect } from '../../core/geometry';
 import { BuiltInWorld } from './builtin-world';
 import { BuiltinObject } from './object/builtin-object';
 import { BuiltinShape } from './shapes/builtin-shape';
-import { Node } from '../../scene-graph';
+import { Node } from '../../core';
 import { BuiltinRigidBody } from './builtin-rigid-body';
 import { PhysicsSystem } from '../framework';
 import { PhysicsGroup } from '../framework/physics-enum';
+import { fastRemoveAt } from '../../core/utils/array';
 
 const m4_0 = new Mat4();
 const v3_0 = new Vec3();
@@ -121,7 +124,7 @@ export class BuiltinSharedBody extends BuiltinObject {
             for (let j = 0; j < body.shapes.length; j++) {
                 const shapeB = body.shapes[j];
                 if (shapeA.collider.needTriggerEvent || shapeB.collider.needTriggerEvent) {
-                    if (geometry.intersect.resolve(shapeA.worldShape, shapeB.worldShape)) {
+                    if (intersect.resolve(shapeA.worldShape, shapeB.worldShape)) {
                         this.world.shapeArr.push(shapeA);
                         this.world.shapeArr.push(shapeB);
                     }
@@ -140,7 +143,7 @@ export class BuiltinSharedBody extends BuiltinObject {
     removeShape (shape: BuiltinShape): void {
         const i = this.shapes.indexOf(shape);
         if (i >= 0) {
-            js.array.fastRemoveAt(this.shapes, i);
+            fastRemoveAt(this.shapes, i);
         }
     }
 

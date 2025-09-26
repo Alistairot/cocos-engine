@@ -57,7 +57,7 @@
                 return;
             }
             this._ensureKeyboardHide(() => {
-                const delegate = this._delegate;
+                let delegate = this._delegate;
                 this._showKeyboard();
                 this._registerKeyboardEvent();
                 this._editing = true;
@@ -68,36 +68,33 @@
 
         endEditing () {
             this._hideKeyboard();
-            const cbs = this._eventListeners;
+            let cbs = this._eventListeners;
             cbs.onKeyboardComplete && cbs.onKeyboardComplete();
         },
 
         _registerKeyboardEvent () {
-            const self = this;
-            const delegate = this._delegate;
-            const cbs = this._eventListeners;
+            let self = this;
+            let delegate = this._delegate;
+            let cbs = this._eventListeners;
 
             cbs.onKeyboardInput = function (res) {
                 if (delegate._string !== res.value) {
                     delegate._editBoxTextChanged(res.value);
                 }
-            };
+            }
 
             cbs.onKeyboardConfirm = function (res) {
-                res && res.value ? delegate._editBoxEditingReturn(res.value) : delegate._editBoxEditingReturn();
-                const cbs = self._eventListeners;
+                delegate._editBoxEditingReturn();
+                let cbs = self._eventListeners;
                 cbs.onKeyboardComplete && cbs.onKeyboardComplete();
-            };
+            }
 
-            cbs.onKeyboardComplete = function (res) {
+            cbs.onKeyboardComplete = function () {
                 self._editing = false;
                 _currentEditBoxImpl = null;
-                // wechat program do not have offKeyboard related callback
-                if (cc.sys.platform !== cc.sys.Platform.WECHAT_MINI_PROGRAM) {
-                    self._unregisterKeyboardEvent();
-                }
-                res && res.value ? delegate._editBoxEditingDidEnded(res.value) : delegate._editBoxEditingDidEnded();
-            };
+                self._unregisterKeyboardEvent();
+                delegate._editBoxEditingDidEnded();
+            }
 
             __globalAdapter.onKeyboardInput(cbs.onKeyboardInput);
             __globalAdapter.onKeyboardConfirm(cbs.onKeyboardConfirm);
@@ -105,7 +102,7 @@
         },
 
         _unregisterKeyboardEvent () {
-            const cbs = this._eventListeners;
+            let cbs = this._eventListeners;
 
             if (cbs.onKeyboardInput) {
                 __globalAdapter.offKeyboardInput(cbs.onKeyboardInput);
@@ -126,7 +123,7 @@
         },
 
         _ensureKeyboardHide (cb) {
-            const otherEditing = this._otherEditing();
+            let otherEditing = this._otherEditing();
             if (!otherEditing && !_hideKeyboardTimeout) {
                 return cb();
             }
@@ -143,8 +140,8 @@
         },
 
         _showKeyboard () {
-            const delegate = this._delegate;
-            const multiline = (delegate.inputMode === EditBoxComp.InputMode.ANY);
+            let delegate = this._delegate;
+            let multiline = (delegate.inputMode === EditBoxComp.InputMode.ANY);
             __globalAdapter.showKeyboard({
                 defaultValue: delegate.string,
                 maxLength: delegate.maxLength < 0 ? MAX_VALUE : delegate.maxLength,
@@ -156,7 +153,7 @@
                 },
                 fail (res) {
                     cc.warn(res.errMsg);
-                },
+                }
             });
         },
 
@@ -171,4 +168,5 @@
             });
         },
     });
-}());
+})();
+

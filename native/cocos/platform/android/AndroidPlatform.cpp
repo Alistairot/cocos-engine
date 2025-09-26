@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2017-2022 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -22,17 +23,18 @@
  THE SOFTWARE.
 ****************************************************************************/
 
-#include "platform/android/AndroidPlatform.h"
-#include <android/native_window_jni.h>
 #include <thread>
+
 #include "application/ApplicationManager.h"
 #include "base/Log.h"
 #include "base/memory/Memory.h"
+#include "bindings/event/CustomEventTypes.h"
 #include "game-activity/native_app_glue/android_native_app_glue.h"
 #include "java/jni/JniHelper.h"
 #include "modules/Screen.h"
 #include "modules/System.h"
 #include "platform/BasePlatform.h"
+#include "platform/android/AndroidPlatform.h"
 #include "platform/android/FileUtils-android.h"
 #include "platform/java/jni/JniImp.h"
 #include "platform/java/jni/glue/JniNativeGlue.h"
@@ -40,12 +42,9 @@
 #include "platform/java/modules/Battery.h"
 #include "platform/java/modules/Network.h"
 #include "platform/java/modules/SystemWindow.h"
-#include "platform/java/modules/SystemWindowManager.h"
 #include "platform/java/modules/Vibrator.h"
 #include "platform/java/modules/XRInterface.h"
 
-#include "base/StringUtil.h"
-#include "engine/EngineEvents.h"
 #include "paddleboat.h"
 
 #define ABORT_GAME                          \
@@ -215,11 +214,8 @@ public:
         return (addedControllerEvent != 0);
     }
 
-    // NOLINTNEXTLINE
     bool cookGameActivityMotionEvent(GameActivityMotionEvent *motionEvent) {
         if (motionEvent->pointerCount > 0) {
-            touchEvent.windowId = ISystemWindow::mainWindowId; // must be main window here
-
             int action = motionEvent->action;
             int actionMasked = action & AMOTION_EVENT_ACTION_MASK;
             int eventChangedIndex = -1;
@@ -256,14 +252,13 @@ public:
                 }
             }
 
-            events::Touch::broadcast(touchEvent);
+            _androidPlatform->dispatchEvent(touchEvent);
             touchEvent.touches.clear();
             return true;
         }
         return false;
     }
 
-    // NOLINTNEXTLINE
     bool cookGameActivityKeyEvent(GameActivityKeyEvent *keyEvent) {
         for (const auto &action : INPUT_KEY_ACTIONS) {
             if (action.buttonMask != keyEvent->keyCode) {
@@ -272,13 +267,12 @@ public:
             keyboardEvent.action = 0 == keyEvent->action ? cc::KeyboardEvent::Action::PRESS
                                                          : cc::KeyboardEvent::Action::RELEASE;
             keyboardEvent.key = action.actionCode;
-            events::Keyboard::broadcast(keyboardEvent);
+            _androidPlatform->dispatchEvent(keyboardEvent);
             return true;
         }
         return false;
     }
 
-    // NOLINTNEXTLINE
     void reportKeyState(int keyCode, bool state) {
         bool wentDown = !keyState[keyCode] && state;
         bool wentUp = keyState[keyCode] && !state;
@@ -287,11 +281,11 @@ public:
         if (wentUp) {
             keyboardEvent.key = keyCode;
             keyboardEvent.action = cc::KeyboardEvent::Action::RELEASE;
-            events::Keyboard::broadcast(keyboardEvent);
+            _androidPlatform->dispatchEvent(keyboardEvent);
         } else if (wentDown) {
             keyboardEvent.key = keyCode;
             keyboardEvent.action = cc::KeyboardEvent::Action::PRESS;
-            events::Keyboard::broadcast(keyboardEvent);
+            _androidPlatform->dispatchEvent(keyboardEvent);
         }
     }
 
@@ -311,19 +305,12 @@ public:
                 break;
             case APP_CMD_INIT_WINDOW: {
                 _hasWindow = true;
-                ANativeWindow *nativeWindow = _androidPlatform->_app->window;
-
+                auto *systemWindow = _androidPlatform->getInterface<SystemWindow>();
+                systemWindow->setWindowHandle(_androidPlatform->_app->window);
                 // We have a window!
                 CC_LOG_DEBUG("AndroidPlatform: APP_CMD_INIT_WINDOW");
                 if (!_launched) {
                     _launched = true;
-
-                    ISystemWindowInfo info;
-                    info.width = ANativeWindow_getWidth(nativeWindow);
-                    info.height = ANativeWindow_getHeight(nativeWindow);
-                    info.externalHandle = nativeWindow;
-                    _androidPlatform->getInterface<SystemWindowManager>()->createWindow(info);
-
                     if (cocos_main(0, nullptr) != 0) {
                         CC_LOG_ERROR("AndroidPlatform: Launch game failed!");
                     } else {
@@ -337,11 +324,10 @@ public:
                     if (xr) {
                         xr->onRenderResume();
                     }
-
-                    auto *windowMgr = _androidPlatform->getInterface<SystemWindowManager>();
-                    auto *window = static_cast<cc::SystemWindow *>(windowMgr->getWindow(ISystemWindow::mainWindowId));
-                    window->setWindowHandle(nativeWindow);
-                    events::WindowRecreated::broadcast(ISystemWindow::mainWindowId);
+                    cc::CustomEvent event;
+                    event.name = EVENT_RECREATE_WINDOW;
+                    event.args->ptrVal = reinterpret_cast<void *>(_androidPlatform->_app->window);
+                    _androidPlatform->dispatchEvent(event);
                 }
                 break;
             }
@@ -353,8 +339,10 @@ public:
                 if (xr) {
                     xr->onRenderPause();
                 }
-                // NOLINTNEXTLINE
-                events::WindowDestroy::broadcast(ISystemWindow::mainWindowId);
+                cc::CustomEvent event;
+                event.name = EVENT_DESTROY_WINDOW;
+                event.args->ptrVal = reinterpret_cast<void *>(_androidPlatform->_app->window);
+                _androidPlatform->dispatchEvent(event);
                 break;
             }
             case APP_CMD_GAINED_FOCUS:
@@ -376,13 +364,13 @@ public:
             }
             case APP_CMD_DESTROY: {
                 CC_LOG_INFO("AndroidPlatform: APP_CMD_DESTROY");
-                IXRInterface *xr = CC_GET_XR_INTERFACE();
+                IXRInterface *xr = _androidPlatform->getInterface<IXRInterface>();
                 if (xr) {
                     xr->onRenderDestroy();
                 }
                 WindowEvent ev;
                 ev.type = WindowEvent::Type::CLOSE;
-                events::WindowEvent::broadcast(ev);
+                _androidPlatform->dispatchEvent(ev);
                 _androidPlatform->onDestroy();
                 break;
             }
@@ -392,7 +380,7 @@ public:
                 Paddleboat_onStop(_jniEnv);
                 WindowEvent ev;
                 ev.type = WindowEvent::Type::HIDDEN;
-                events::WindowEvent::broadcast(ev);
+                _androidPlatform->dispatchEvent(ev);
                 break;
             }
             case APP_CMD_START: {
@@ -401,7 +389,7 @@ public:
                 Paddleboat_onStart(_jniEnv);
                 WindowEvent ev;
                 ev.type = WindowEvent::Type::SHOW;
-                events::WindowEvent::broadcast(ev);
+                _androidPlatform->dispatchEvent(ev);
                 break;
             }
             case APP_CMD_WINDOW_RESIZED: {
@@ -410,8 +398,7 @@ public:
                 ev.type = cc::WindowEvent::Type::SIZE_CHANGED;
                 ev.width = ANativeWindow_getWidth(_androidPlatform->_app->window);
                 ev.height = ANativeWindow_getHeight(_androidPlatform->_app->window);
-                ev.windowId = ISystemWindow::mainWindowId;
-                events::WindowEvent::broadcast(ev);
+                _androidPlatform->dispatchEvent(ev);
                 break;
             }
             case APP_CMD_CONFIG_CHANGED:
@@ -425,7 +412,9 @@ public:
                 // system told us we have low memory. So if we are not visible, let's
                 // cooperate by deallocating all of our graphic resources.
                 CC_LOG_INFO("AndroidPlatform: APP_CMD_LOW_MEMORY");
-                events::LowMemory::broadcast();
+                DeviceEvent ev;
+                ev.type = DeviceEvent::Type::MEMORY;
+                _androidPlatform->dispatchEvent(ev);
                 break;
             }
             case APP_CMD_CONTENT_RECT_CHANGED:
@@ -530,14 +519,9 @@ int AndroidPlatform::init() {
         JniHelper::getEnv();
         xr->initialize(JniHelper::getJavaVM(), getActivity());
     }
-    cc::FileUtilsAndroid::setAssetManager(_app->activity->assetManager);
+    cc::FileUtilsAndroid::setassetmanager(_app->activity->assetManager);
     _inputProxy = ccnew GameInputProxy(this);
     _inputProxy->registerAppEventCallback([this](int32_t cmd) {
-        IXRInterface *xr = CC_GET_XR_INTERFACE();
-        if (xr) {
-            xr->handleAppCommand(cmd);
-        }
-
         if (APP_CMD_START == cmd || APP_CMD_INIT_WINDOW == cmd) {
             if (_inputProxy->isAnimating()) {
                 _isLowFrequencyLoopEnabled = false;
@@ -547,6 +531,7 @@ int AndroidPlatform::init() {
             _lowFrequencyTimer.reset();
             _loopTimeOut = LOW_FREQUENCY_TIME_INTERVAL;
             _isLowFrequencyLoopEnabled = true;
+            IXRInterface *xr = getInterface<IXRInterface>();
             if (xr && !xr->getXRConfig(xr::XRConfigKey::INSTANCE_CREATED).getBool()) {
                 // xr will sleep,  -1 we will block forever waiting for events.
                 _loopTimeOut = -1;
@@ -562,7 +547,7 @@ int AndroidPlatform::init() {
     registerInterface(std::make_shared<Network>());
     registerInterface(std::make_shared<Screen>());
     registerInterface(std::make_shared<System>());
-    registerInterface(std::make_shared<SystemWindowManager>());
+    registerInterface(std::make_shared<SystemWindow>());
     registerInterface(std::make_shared<Vibrator>());
 
     return 0;
@@ -571,12 +556,7 @@ int AndroidPlatform::init() {
 void AndroidPlatform::onDestroy() {
     UniversalPlatform::onDestroy();
     unregisterAllInterfaces();
-    JniHelper::onDestroy();
     CC_SAFE_DELETE(_inputProxy)
-}
-
-cc::ISystemWindow *AndroidPlatform::createNativeWindow(uint32_t windowId, void *externalHandle) {
-    return ccnew SystemWindow(windowId, externalHandle);
 }
 
 int AndroidPlatform::getSdkVersion() const {
@@ -589,7 +569,7 @@ int32_t AndroidPlatform::run(int /*argc*/, const char ** /*argv*/) {
 }
 
 int32_t AndroidPlatform::loop() {
-    IXRInterface *xr = CC_GET_XR_INTERFACE();
+    IXRInterface *xr = getInterface<IXRInterface>();
     while (true) {
         int events;
         struct android_poll_source *source;

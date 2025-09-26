@@ -8,12 +8,16 @@ exports.style = texture.style;
 
 exports.$ = texture.$;
 
+/**
+ * attribute corresponds to the edit element
+ */
 const Elements = texture.Elements;
 
-exports.methods = texture.methods;
-
-exports.ready = texture.ready;
-
+/**
+ * Methods for automatic rendering of components
+ * @param assetList
+ * @param metaList
+ */
 exports.update = function(assetList, metaList) {
     this.assetList = assetList;
     this.metaList = metaList;
@@ -31,3 +35,9 @@ exports.update = function(assetList, metaList) {
     }
 };
 
+/**
+ * Method of initializing the panel
+ */
+exports.ready = texture.ready;
+
+exports.methods = texture.methods;

@@ -1,15 +1,15 @@
 /*
  Copyright (c) 2013-2016 Chukong Technologies Inc.
- Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2017-2020 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos2d-x.org
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
  of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ in the Software without restriction, including without limitation the rights
+ to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+ copies of the Software, and to permit persons to whom the Software is
+ furnished to do so, subject to the following conditions:
 
  The above copyright notice and this permission notice shall be included in
  all copies or substantial portions of the Software.
@@ -24,11 +24,11 @@
 */
 
 import { ccclass, help, executeInEditMode, menu, tooltip, type, displayOrder, serializable, formerlySerializedAs } from 'cc.decorator';
-import { scene } from '../../render-scene';
+import { scene } from '../../core/renderer';
 import { Light, PhotometricTerm } from './light-component';
-import { cclegacy } from '../../core';
-import { Camera } from '../../render-scene/scene';
-import { Root } from '../../root';
+import { legacyCC } from '../../core/global-exports';
+import { Camera } from '../../core/renderer/scene';
+import { Root } from '../../core/root';
 
 /**
  * @en The sphere light component, multiple sphere lights can be added to one scene.
@@ -40,16 +40,19 @@ import { Root } from '../../root';
 @executeInEditMode
 export class SphereLight extends Light {
     @serializable
-    private _size = 0.15;
+    protected _size = 0.15;
     @serializable
     @formerlySerializedAs('_luminance')
-    private _luminanceHDR = 1700 / scene.nt2lm(0.15);
+    protected _luminanceHDR = 1700 / scene.nt2lm(0.15);
     @serializable
-    private _luminanceLDR = 1700 / scene.nt2lm(0.15) * Camera.standardExposureValue * Camera.standardLightMeterScale;
+    protected _luminanceLDR = 1700 / scene.nt2lm(0.15) * Camera.standardExposureValue * Camera.standardLightMeterScale;
     @serializable
-    private _term = PhotometricTerm.LUMINOUS_FLUX;
+    protected _term = PhotometricTerm.LUMINOUS_FLUX;
     @serializable
-    private _range = 1;
+    protected _range = 1;
+
+    protected _type = scene.LightType.SPHERE;
+    protected _light: scene.SphereLight | null = null;
 
     /**
      * @en Luminous flux of the light.
@@ -58,7 +61,7 @@ export class SphereLight extends Light {
     @displayOrder(-1)
     @tooltip('i18n:lights.luminous_flux')
     get luminousFlux () {
-        const isHDR = (cclegacy.director.root as Root).pipeline.pipelineSceneData.isHDR;
+        const isHDR = (legacyCC.director.root as Root).pipeline.pipelineSceneData.isHDR;
         if (isHDR) {
             return this._luminanceHDR * scene.nt2lm(this._size);
         } else {
@@ -66,7 +69,7 @@ export class SphereLight extends Light {
         }
     }
     set luminousFlux (val) {
-        const isHDR = (cclegacy.director.root as Root).pipeline.pipelineSceneData.isHDR;
+        const isHDR = (legacyCC.director.root as Root).pipeline.pipelineSceneData.isHDR;
         let result = 0;
         if (isHDR) {
             this._luminanceHDR = val / scene.nt2lm(this._size);
@@ -75,7 +78,7 @@ export class SphereLight extends Light {
             this._luminanceLDR = val;
             result = this._luminanceLDR;
         }
-        this._light && ((this._light as scene.SphereLight).luminance = result);
+        this._light && (this._light.luminance = result);
     }
 
     /**
@@ -85,7 +88,7 @@ export class SphereLight extends Light {
     @displayOrder(-1)
     @tooltip('i18n:lights.luminance')
     get luminance () {
-        const isHDR = (cclegacy.director.root as Root).pipeline.pipelineSceneData.isHDR;
+        const isHDR = (legacyCC.director.root as Root).pipeline.pipelineSceneData.isHDR;
         if (isHDR) {
             return this._luminanceHDR;
         } else {
@@ -93,13 +96,13 @@ export class SphereLight extends Light {
         }
     }
     set luminance (val) {
-        const isHDR = (cclegacy.director.root as Root).pipeline.pipelineSceneData.isHDR;
+        const isHDR = (legacyCC.director.root as Root).pipeline.pipelineSceneData.isHDR;
         if (isHDR) {
             this._luminanceHDR = val;
-            this._light && ((this._light as scene.SphereLight).luminanceHDR = this._luminanceHDR);
+            this._light && (this._light.luminanceHDR = this._luminanceHDR);
         } else {
             this._luminanceLDR = val;
-            this._light && ((this._light as scene.SphereLight).luminanceLDR = this._luminanceLDR);
+            this._light && (this._light.luminanceLDR = this._luminanceLDR);
         }
     }
 
@@ -129,7 +132,7 @@ export class SphereLight extends Light {
     }
     set size (val) {
         this._size = val;
-        if (this._light) { (this._light as scene.SphereLight).size = val; }
+        if (this._light) { this._light.size = val; }
     }
 
     /**
@@ -144,7 +147,7 @@ export class SphereLight extends Light {
     }
     set range (val) {
         this._range = val;
-        if (this._light) { (this._light as scene.SphereLight).range = val; }
+        if (this._light) { this._light.range = val; }
     }
 
     constructor () {
@@ -154,13 +157,12 @@ export class SphereLight extends Light {
 
     protected _createLight () {
         super._createLight();
-        this._type = scene.LightType.SPHERE;
         this.size = this._size;
         this.range = this._range;
 
         if (this._light) {
-            (this._light as scene.SphereLight).luminanceHDR = this._luminanceHDR;
-            (this._light as scene.SphereLight).luminanceLDR = this._luminanceLDR;
+            this._light.luminanceHDR = this._luminanceHDR;
+            this._light.luminanceLDR = this._luminanceLDR;
         }
     }
 }

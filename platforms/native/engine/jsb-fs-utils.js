@@ -224,4 +224,4 @@ var fsUtils = {
     },
 };
 
-globalThis.fsUtils = module.exports = fsUtils;
+window.fsUtils = module.exports = fsUtils;

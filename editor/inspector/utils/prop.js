@@ -221,7 +221,7 @@ exports.updatePropByDump = function(panel, dump) {
                 $prop.setAttribute('type', 'dump');
             }
 
-            const _displayOrder = info.group?.displayOrder ?? info.displayOrder;
+            const _displayOrder = info.group?.displayOrder || info.displayOrder;
             $prop.displayOrder = _displayOrder === undefined ? index : Number(_displayOrder);
 
             if (element && element.displayOrder !== undefined) {
@@ -240,7 +240,7 @@ exports.updatePropByDump = function(panel, dump) {
 
                     if (panel.$groups[id]) {
                         if (!panel.$groups[id].isConnected) {
-                            exports.appendChildByDisplayOrder(panel.$.componentContainer, panel.$groups[id]);
+                            exports.appendChildByDisplayOrder(panel.$.componentContainer, panel.$groups[id], dump.groups[id].displayOrder);
                         }
 
                         if (dump.groups[id].style === 'tab') {
@@ -248,18 +248,18 @@ exports.updatePropByDump = function(panel, dump) {
                         }
                     }
 
-                    exports.appendChildByDisplayOrder(panel.$groups[id].tabs[name], $prop);
+                    exports.appendChildByDisplayOrder(panel.$groups[id].tabs[name], $prop, $prop.displayOrder);
                 } else {
-                    exports.appendChildByDisplayOrder(panel.$.componentContainer, $prop);
+                    exports.appendChildByDisplayOrder(panel.$.componentContainer, $prop, $prop.displayOrder);
                 }
             }
         } else if (!$prop.isConnected || !$prop.parentElement) {
             if (!element || !element.isAppendToParent || element.isAppendToParent.call(panel)) {
                 if (info.group && dump.groups) {
                     const { id = 'default', name } = info.group;
-                    exports.appendChildByDisplayOrder(panel.$groups[id].tabs[name], $prop);
+                    exports.appendChildByDisplayOrder(panel.$groups[id].tabs[name], $prop, $prop.displayOrder);
                 } else {
-                    exports.appendChildByDisplayOrder(panel.$.componentContainer, $prop);
+                    exports.appendChildByDisplayOrder(panel.$.componentContainer, $prop, $prop.displayOrder);
                 }
             }
         }
@@ -289,8 +289,6 @@ exports.updatePropByDump = function(panel, dump) {
             element.update.call(panel, panel.$[key], dump.value);
         }
     }
-
-    exports.toggleGroups(panel.$groups);
 };
 
 /**
@@ -339,19 +337,14 @@ exports.createTabGroup = function(dump, panel) {
 
     $group.dump = dump;
     $group.tabs = {};
-    $group.displayOrder = dump.displayOrder;
 
     $group.$header = document.createElement('ui-tab');
     $group.$header.setAttribute('class', 'tab-header');
     $group.appendChild($group.$header);
 
     $group.$header.addEventListener('change', (e) => {
-        active(e.target.value);
-    });
-
-    function active(index) {
         const tabNames = Object.keys($group.tabs);
-        const tabName = tabNames[index];
+        const tabName = tabNames[e.target.value || 0];
         $group.childNodes.forEach((child) => {
             if (!child.classList.contains('tab-content')) {
                 return;
@@ -362,7 +355,7 @@ exports.createTabGroup = function(dump, panel) {
                 child.style.display = 'none';
             }
         });
-    }
+    });
 
     // check style
     if (!panel.$this.shadowRoot.querySelector('style#group-style')) {
@@ -387,22 +380,15 @@ exports.createTabGroup = function(dump, panel) {
     }
 
     setTimeout(() => {
-        active(0);
+        const $firstTab = $group.$header.shadowRoot.querySelector('ui-button');
+        if ($firstTab) {
+            $firstTab.dispatch('confirm');
+        }
     });
 
     return $group;
 };
-exports.toggleGroups = function($groups) {
-    for (const key in $groups) {
-        const $props = Array.from($groups[key].querySelectorAll('.tab-content > ui-prop'));
-        const show = $props.some($prop => getComputedStyle($prop).display !== 'none');
-        if (show) {
-            $groups[key].removeAttribute('hidden');
-        } else {
-            $groups[key].setAttribute('hidden', '');
-        }
-    }
-},
+
 exports.appendToTabGroup = function($group, tabName) {
     if ($group.tabs[tabName]) {
         return;
@@ -425,8 +411,7 @@ exports.appendToTabGroup = function($group, tabName) {
     $group.$header.appendChild($button);
 };
 
-exports.appendChildByDisplayOrder = function(parent, newChild) {
-    const displayOrder = newChild.displayOrder || 0;
+exports.appendChildByDisplayOrder = function(parent, newChild, displayOrder = 0) {
     const children = Array.from(parent.children);
 
     const child = children.find((child) => {

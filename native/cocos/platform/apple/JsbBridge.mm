@@ -27,7 +27,8 @@
 #import <Foundation/Foundation.h>
 #include "base/std/container/string.h"
 #include "cocos/bindings/manual/JavaScriptObjCBridge.h"
-#include "engine/EngineEvents.h"
+#include "cocos/bindings/event/EventDispatcher.h"
+#include "cocos/bindings/event/CustomEventTypes.h"
 
 bool callPlatformStringMethod(const ccstd::string &arg0, const ccstd::string &arg1) {
     NSString *oc_arg0 = [NSString stringWithCString:arg0.c_str() encoding:NSUTF8StringEncoding];
@@ -39,7 +40,6 @@ bool callPlatformStringMethod(const ccstd::string &arg0, const ccstd::string &ar
 
 @implementation JsbBridge {
     ICallback callback;
-    cc::events::Close::Listener closeListener;
 }
 
 static JsbBridge *instance = nil;
@@ -63,7 +63,7 @@ static JsbBridge *instance = nil;
 
 - (id)init {
     if (self = [super init]) {
-        closeListener.bind([&](){
+        cc::EventDispatcher::addCustomEventListener(EVENT_CLOSE, [&](const cc::CustomEvent& event){
             if ([JsbBridge sharedInstance] != nil) {
                 [[JsbBridge sharedInstance] release];
             }

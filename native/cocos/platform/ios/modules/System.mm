@@ -73,7 +73,6 @@ System::LanguageType System::getCurrentLanguage() const {
     if ([languageCode isEqualToString:@"uk"]) return LanguageType::UKRAINIAN;
     if ([languageCode isEqualToString:@"ro"]) return LanguageType::ROMANIAN;
     if ([languageCode isEqualToString:@"bg"]) return LanguageType::BULGARIAN;
-    if ([languageCode isEqualToString:@"hi"]) return LanguageType::HINDI;
     return LanguageType::ENGLISH;
 }
 
@@ -100,10 +99,4 @@ bool System::openURL(const ccstd::string &url) {
         }];
     return flag;
 }
-
-void System::copyTextToClipboard(const std::string& text) {
-    UIPasteboard* pasteboard = [UIPasteboard generalPasteboard];
-    pasteboard.string = [NSString stringWithCString:text.c_str() encoding:NSUTF8StringEncoding];
-}
-
 } // namespace cc

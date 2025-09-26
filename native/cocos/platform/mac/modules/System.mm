@@ -73,7 +73,6 @@ System::LanguageType System::getCurrentLanguage() const {
     if ([languageCode isEqualToString:@"uk"]) return LanguageType::UKRAINIAN;
     if ([languageCode isEqualToString:@"ro"]) return LanguageType::ROMANIAN;
     if ([languageCode isEqualToString:@"bg"]) return LanguageType::BULGARIAN;
-    if ([languageCode isEqualToString:@"hi"]) return LanguageType::HINDI;
     return LanguageType::ENGLISH;
 }
 
@@ -96,12 +95,4 @@ bool System::openURL(const ccstd::string &url) {
     NSURL *nsUrl = [NSURL URLWithString:msg];
     return [[NSWorkspace sharedWorkspace] openURL:nsUrl];
 }
-
-void System::copyTextToClipboard(const std::string &text) {
-    NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
-    [pasteboard clearContents];
-    NSString *tmp = [NSString stringWithCString:text.c_str() encoding:NSUTF8StringEncoding];
-    [pasteboard setString:tmp forType:NSPasteboardTypeString];
-}
-
 } // namespace cc

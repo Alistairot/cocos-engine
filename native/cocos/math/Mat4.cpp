@@ -1,7 +1,7 @@
 /**
  Copyright 2013 BlackBerry Inc.
  Copyright (c) 2013-2016 Chukong Technologies Inc.
- Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2017-2021 Xiamen Yaji Software Co., Ltd.
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -111,7 +111,7 @@ void Mat4::createLookAt(float eyePositionX, float eyePositionY, float eyePositio
 void Mat4::createPerspective(float fieldOfView, float aspectRatio, float zNearPlane, float zFarPlane,
                              bool isFieldOfViewY, float minClipZ, float projectionSignY, int orientation, Mat4 *dst) {
     CC_ASSERT(dst);
-    CC_ASSERT_NE(zFarPlane, zNearPlane);
+    CC_ASSERT(zFarPlane != zNearPlane);
     CC_ASSERT(fieldOfView != 0.0F);
 
     const float f = 1.0F / tanf(fieldOfView / 2.0F);
@@ -151,9 +151,9 @@ void Mat4::createOrthographicOffCenter(float left, float right, float bottom, fl
 
 void Mat4::createOrthographicOffCenter(float left, float right, float bottom, float top, float zNearPlane, float zFarPlane, float minClipZ, float projectionSignY, int orientation, Mat4 *dst) {
     CC_ASSERT(dst);
-    CC_ASSERT_NE(right, left);
-    CC_ASSERT_NE(top, bottom);
-    CC_ASSERT_NE(zFarPlane, zNearPlane);
+    CC_ASSERT(right != left);
+    CC_ASSERT(top != bottom);
+    CC_ASSERT(zFarPlane != zNearPlane);
 
     const ccstd::array<float, 4> &preTransform = PRE_TRANSFORMS[orientation];
     const float lr = 1.F / (left - right);
@@ -555,7 +555,7 @@ bool Mat4::decompose(Vec3 *scale, Quaternion *rotation, Vec3 *translation) const
     // In this case, we simply negate a single axis of the scale.
     float det = determinant();
     if (det < 0) {
-        scaleX = -scaleX;
+        scaleZ = -scaleZ;
     }
 
     if (scale) {
@@ -593,10 +593,10 @@ bool Mat4::decompose(Vec3 *scale, Quaternion *rotation, Vec3 *translation) const
     zaxis.z *= rn;
 
     // Now calculate the rotation from the resulting matrix (axes).
-    float trace = xaxis.x + yaxis.y + zaxis.z;
+    float trace = xaxis.x + yaxis.y + zaxis.z + 1.0F;
 
-    if (trace > 0.0F) {
-        float s = 0.5F / std::sqrt(trace + 1.0F);
+    if (trace > MATH_EPSILON) {
+        float s = 0.5F / std::sqrt(trace);
         rotation->w = 0.25F / s;
         rotation->x = (yaxis.z - zaxis.y) * s;
         rotation->y = (zaxis.x - xaxis.z) * s;
@@ -1046,8 +1046,11 @@ Mat4 Mat4::getTransposed() const {
     return mat;
 }
 
-bool Mat4::approxEquals(const Mat4 &v, float precision /* = CC_FLOAT_CMP_PRECISION */) const {
-    return math::isEqualF(m[0], v.m[0], precision) && math::isEqualF(m[1], v.m[1], precision) && math::isEqualF(m[2], v.m[2], precision) && math::isEqualF(m[3], v.m[3], precision) && math::isEqualF(m[4], v.m[4], precision) && math::isEqualF(m[5], v.m[5], precision) && math::isEqualF(m[6], v.m[6], precision) && math::isEqualF(m[7], v.m[7], precision) && math::isEqualF(m[8], v.m[8], precision) && math::isEqualF(m[9], v.m[9], precision) && math::isEqualF(m[10], v.m[10], precision) && math::isEqualF(m[11], v.m[11], precision) && math::isEqualF(m[12], v.m[12], precision) && math::isEqualF(m[13], v.m[13], precision) && math::isEqualF(m[14], v.m[14], precision) && math::isEqualF(m[15], v.m[15], precision);
+bool Mat4::approxEquals(const Mat4& v, float precision/* = CC_FLOAT_CMP_PRECISION */) const {
+    return math::isEqualF(m[0], v.m[0], precision) && math::isEqualF(m[1], v.m[1], precision) && math::isEqualF(m[2], v.m[2], precision) && math::isEqualF(m[3], v.m[3], precision)
+        && math::isEqualF(m[4], v.m[4], precision) && math::isEqualF(m[5], v.m[5], precision) && math::isEqualF(m[6], v.m[6], precision) && math::isEqualF(m[7], v.m[7], precision)
+        && math::isEqualF(m[8], v.m[8], precision) && math::isEqualF(m[9], v.m[9], precision) && math::isEqualF(m[10], v.m[10], precision) && math::isEqualF(m[11], v.m[11], precision)
+        && math::isEqualF(m[12], v.m[12], precision) && math::isEqualF(m[13], v.m[13], precision) && math::isEqualF(m[14], v.m[14], precision) && math::isEqualF(m[15], v.m[15], precision);
 }
 
 const Mat4 Mat4::IDENTITY = Mat4(

@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2020-2022 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -33,7 +34,6 @@
 #include "VKCommands.h"
 #include "VKDevice.h"
 #include "VKGPUObjects.h"
-#include "VKPipelineCache.h"
 #include "gfx-base/GFXDef.h"
 #include "states/VKBufferBarrier.h"
 #include "states/VKGeneralBarrier.h"
@@ -76,7 +76,7 @@ void insertVkDynamicStates(ccstd::vector<VkDynamicState> *out, const ccstd::vect
                 out->push_back(VK_DYNAMIC_STATE_STENCIL_COMPARE_MASK);
                 break;
             default: {
-                CC_ABORT();
+                CC_ASSERT(false);
                 break;
             }
         }
@@ -191,9 +191,6 @@ void cmdFuncCCVKCreateTexture(CCVKDevice *device, CCVKGPUTexture *gpuTexture) {
             }
         }
         gpuTexture->memoryless = true;
-    } else if (hasFlag(gpuTexture->flags, TextureFlagBit::EXTERNAL_OES)
-        || hasFlag(gpuTexture->flags, TextureFlagBit::EXTERNAL_NORMAL)) {
-        gpuTexture->vkImage = gpuTexture->externalVKImage;
     } else {
         createFn(&gpuTexture->vkImage, &gpuTexture->vmaAllocation);
     }
@@ -224,7 +221,11 @@ void cmdFuncCCVKCreateTextureView(CCVKDevice *device, CCVKGPUTextureView *gpuTex
         }
     } else if (gpuTextureView->gpuTexture->vkImage) {
         createFn(gpuTextureView->gpuTexture->vkImage, &gpuTextureView->vkImageView);
+    } else {
+        return;
     }
+
+    device->gpuDescriptorHub()->update(gpuTextureView);
 }
 
 void cmdFuncCCVKCreateSampler(CCVKDevice *device, CCVKGPUSampler *gpuSampler) {
@@ -284,6 +285,7 @@ void cmdFuncCCVKCreateBuffer(CCVKDevice *device, CCVKGPUBuffer *gpuBuffer) {
                              &gpuBuffer->vkBuffer, &gpuBuffer->vmaAllocation, &res));
 
     gpuBuffer->mappedData = reinterpret_cast<uint8_t *>(res.pMappedData);
+    gpuBuffer->startOffset = 0; // we are creating one VkBuffer each for now
 
     // add special access types directly from usage
     if (hasFlag(gpuBuffer->usage, BufferUsageBit::VERTEX)) gpuBuffer->renderAccessTypes.push_back(THSVS_ACCESS_VERTEX_BUFFER);
@@ -298,7 +300,6 @@ struct AttachmentStatistics final {
         DEPTH = 0x4,
         DEPTH_RESOLVE = 0x8,
         INPUT = 0x10,
-        SHADING_RATE = 0x20,
     };
     struct SubpassRef final {
         VkImageLayout layout{VK_IMAGE_LAYOUT_UNDEFINED};
@@ -360,7 +361,6 @@ void cmdFuncCCVKCreateRenderPass(CCVKDevice *device, CCVKGPURenderPass *gpuRende
     static ccstd::vector<CCVKAccessInfo> endAccessInfos;
     static ccstd::vector<AttachmentStatistics> attachmentStatistics;
     static SubpassDependencyManager dependencyManager;
-    ccstd::vector<VkFragmentShadingRateAttachmentInfoKHR> shadingRateReferences;
 
     const size_t colorAttachmentCount = gpuRenderPass->colorAttachments.size();
     const size_t hasDepth = gpuRenderPass->depthStencilAttachment.format != Format::UNKNOWN ? 1 : 0;
@@ -368,7 +368,6 @@ void cmdFuncCCVKCreateRenderPass(CCVKDevice *device, CCVKGPURenderPass *gpuRende
     gpuRenderPass->clearValues.resize(colorAttachmentCount + hasDepth);
     beginAccessInfos.resize(colorAttachmentCount + hasDepth);
     endAccessInfos.resize(colorAttachmentCount + hasDepth);
-    shadingRateReferences.resize(gpuRenderPass->subpasses.size(), {VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR});
 
     for (size_t i = 0U; i < colorAttachmentCount; ++i) {
         const auto &attachment{gpuRenderPass->colorAttachments[i]};
@@ -491,14 +490,6 @@ void cmdFuncCCVKCreateRenderPass(CCVKDevice *device, CCVKGPURenderPass *gpuRende
             attachmentReferences.push_back({VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2, nullptr, subpassInfo.depthStencilResolve, layout, aspect});
         }
 
-        if (subpassInfo.shadingRate != INVALID_BINDING && subpassInfo.shadingRate < colorAttachmentCount) {
-            // layout is guaranteed
-            attachmentDescriptions[subpassInfo.shadingRate].initialLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
-            attachmentDescriptions[subpassInfo.shadingRate].finalLayout = VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR;
-            const ColorAttachment &desc = gpuRenderPass->colorAttachments[subpassInfo.shadingRate];
-            attachmentReferences.push_back({VK_STRUCTURE_TYPE_ATTACHMENT_REFERENCE_2, nullptr, subpassInfo.shadingRate, VK_IMAGE_LAYOUT_FRAGMENT_SHADING_RATE_ATTACHMENT_OPTIMAL_KHR, VK_IMAGE_ASPECT_COLOR_BIT});
-        }
-
         gpuRenderPass->sampleCounts.push_back(sampleCount);
     }
 
@@ -559,13 +550,6 @@ void cmdFuncCCVKCreateRenderPass(CCVKDevice *device, CCVKGPURenderPass *gpuRende
             resolveDesc.stencilResolveMode = stencilResolveMode;
             resolveDesc.pDepthStencilResolveAttachment = attachmentReferences.data() + offset++;
             desc.pNext = &resolveDesc;
-        }
-
-        if (subpassInfo.shadingRate != INVALID_BINDING) {
-            VkFragmentShadingRateAttachmentInfoKHR &attachment = shadingRateReferences[i];
-            attachment.pFragmentShadingRateAttachment = attachmentReferences.data() + offset++;
-            attachment.shadingRateAttachmentTexelSize = {16, 16}; // todo
-            desc.pNext = &attachment;
         }
     }
 
@@ -668,11 +652,6 @@ void cmdFuncCCVKCreateRenderPass(CCVKDevice *device, CCVKGPURenderPass *gpuRende
                         updateLifeCycle(statistics, j, subpass.pInputAttachments[k].layout, AttachmentStatistics::SubpassUsage::INPUT);
                     }
                 }
-                const auto *vrsDesc = static_cast<const VkFragmentShadingRateAttachmentInfoKHR *>(subpass.pNext);
-                if (vrsDesc != nullptr && vrsDesc->sType == VK_STRUCTURE_TYPE_FRAGMENT_SHADING_RATE_ATTACHMENT_INFO_KHR && vrsDesc->pFragmentShadingRateAttachment->attachment == targetAttachment) {
-                    updateLifeCycle(statistics, j, vrsDesc->pFragmentShadingRateAttachment->layout, AttachmentStatistics::SubpassUsage::SHADING_RATE);
-                }
-
                 if (subpass.pDepthStencilAttachment && subpass.pDepthStencilAttachment->attachment == targetAttachment) {
                     updateLifeCycle(statistics, j, subpass.pDepthStencilAttachment->layout, AttachmentStatistics::SubpassUsage::DEPTH);
                 }
@@ -807,20 +786,16 @@ void cmdFuncCCVKCreateFramebuffer(CCVKDevice *device, CCVKGPUFramebuffer *gpuFra
     createInfo.width = createInfo.height = UINT_MAX;
 
     uint32_t swapchainImageIndices = 0;
-
     for (size_t i = 0U; i < colorViewCount; ++i) {
-        const CCVKGPUTextureView *texView = gpuFramebuffer->gpuColorViews[i];
+        CCVKGPUTextureView *texView = gpuFramebuffer->gpuColorViews[i];
         if (texView->gpuTexture->swapchain) {
             gpuFramebuffer->swapchain = texView->gpuTexture->swapchain;
             swapchainImageIndices |= (1 << i);
         } else {
             attachments[i] = gpuFramebuffer->gpuColorViews[i]->vkImageView;
         }
-
-        if (!hasFlag(texView->gpuTexture->usage, TextureUsageBit::SHADING_RATE)) {
-            createInfo.width = std::min(createInfo.width, std::max(1U, gpuFramebuffer->gpuColorViews[i]->gpuTexture->width >> gpuFramebuffer->gpuColorViews[i]->baseLevel));
-            createInfo.height = std::min(createInfo.height, std::max(1U, gpuFramebuffer->gpuColorViews[i]->gpuTexture->height >> gpuFramebuffer->gpuColorViews[i]->baseLevel));
-        }
+        createInfo.width = std::min(createInfo.width, std::max(1U, gpuFramebuffer->gpuColorViews[i]->gpuTexture->width >> gpuFramebuffer->gpuColorViews[i]->baseLevel));
+        createInfo.height = std::min(createInfo.height, std::max(1U, gpuFramebuffer->gpuColorViews[i]->gpuTexture->height >> gpuFramebuffer->gpuColorViews[i]->baseLevel));
     }
     if (hasDepth) {
         if (gpuFramebuffer->gpuDepthStencilView->gpuTexture->swapchain) {
@@ -829,6 +804,8 @@ void cmdFuncCCVKCreateFramebuffer(CCVKDevice *device, CCVKGPUFramebuffer *gpuFra
         } else {
             attachments[colorViewCount] = gpuFramebuffer->gpuDepthStencilView->vkImageView;
         }
+        createInfo.width = std::min(createInfo.width, std::max(1U, gpuFramebuffer->gpuDepthStencilView->gpuTexture->width >> gpuFramebuffer->gpuDepthStencilView->baseLevel));
+        createInfo.height = std::min(createInfo.height, std::max(1U, gpuFramebuffer->gpuDepthStencilView->gpuTexture->height >> gpuFramebuffer->gpuDepthStencilView->baseLevel));
     }
     gpuFramebuffer->isOffscreen = !swapchainImageIndices;
     gpuFramebuffer->width = createInfo.width;
@@ -841,13 +818,25 @@ void cmdFuncCCVKCreateFramebuffer(CCVKDevice *device, CCVKGPUFramebuffer *gpuFra
         createInfo.layers = 1;
         VK_CHECK(vkCreateFramebuffer(device->gpuDevice()->vkDevice, &createInfo, nullptr, &gpuFramebuffer->vkFramebuffer));
     } else {
-        size_t swapChainImageCount = gpuFramebuffer->swapchain->swapchainImages.size();
-        gpuFramebuffer->vkFrameBuffers.resize(swapChainImageCount);
+        // swapchain-related framebuffers need special treatments: rebuild is needed
+        // whenever a user-specified attachment or swapchain itself is changed
+
+        FramebufferListMap &fboListMap = gpuFramebuffer->swapchain->vkSwapchainFramebufferListMap;
+        auto fboListMapIter = fboListMap.find(gpuFramebuffer);
+        if (fboListMapIter != fboListMap.end() && !fboListMapIter->second.empty()) {
+            return;
+        }
+        size_t swapchainImageCount = gpuFramebuffer->swapchain->swapchainImages.size();
+        if (fboListMapIter != fboListMap.end()) {
+            fboListMapIter->second.resize(swapchainImageCount);
+        } else {
+            fboListMap.emplace(std::piecewise_construct, std::forward_as_tuple(gpuFramebuffer), std::forward_as_tuple(swapchainImageCount));
+        }
         createInfo.renderPass = gpuFramebuffer->gpuRenderPass->vkRenderPass;
         createInfo.attachmentCount = utils::toUint(attachments.size());
         createInfo.pAttachments = attachments.data();
         createInfo.layers = 1;
-        for (size_t i = 0U; i < swapChainImageCount; ++i) {
+        for (size_t i = 0U; i < swapchainImageCount; ++i) {
             for (size_t j = 0U; j < colorViewCount; ++j) {
                 if (swapchainImageIndices & (1 << j)) {
                     attachments[j] = gpuFramebuffer->gpuColorViews[j]->swapchainVkImageViews[i];
@@ -856,7 +845,7 @@ void cmdFuncCCVKCreateFramebuffer(CCVKDevice *device, CCVKGPUFramebuffer *gpuFra
             if (swapchainImageIndices & (1 << colorViewCount)) {
                 attachments[colorViewCount] = gpuFramebuffer->gpuDepthStencilView->swapchainVkImageViews[i];
             }
-            VK_CHECK(vkCreateFramebuffer(device->gpuDevice()->vkDevice, &createInfo, nullptr, &gpuFramebuffer->vkFrameBuffers[i]));
+            VK_CHECK(vkCreateFramebuffer(device->gpuDevice()->vkDevice, &createInfo, nullptr, &fboListMap[gpuFramebuffer][i]));
         }
     }
 }
@@ -899,7 +888,7 @@ void cmdFuncCCVKCreateDescriptorSetLayout(CCVKDevice *device, CCVKGPUDescriptorS
     CCVKGPUDescriptorSetPool *pool = gpuDevice->getDescriptorSetPool(gpuDescriptorSetLayout->id);
     pool->link(gpuDevice, gpuDescriptorSetLayout->maxSetsPerPool, gpuDescriptorSetLayout->vkBindings, gpuDescriptorSetLayout->vkDescriptorSetLayout);
 
-    gpuDescriptorSetLayout->defaultDescriptorSet = pool->request();
+    gpuDescriptorSetLayout->defaultDescriptorSet = pool->request(0);
 
     if (gpuDevice->useDescriptorUpdateTemplate && bindingCount) {
         const ccstd::vector<VkDescriptorSetLayoutBinding> &bindings = gpuDescriptorSetLayout->vkBindings;
@@ -962,10 +951,7 @@ void cmdFuncCCVKCreateComputePipelineState(CCVKDevice *device, CCVKGPUPipelineSt
 
     ///////////////////// Creation /////////////////////
 
-    auto *pipelineCache = device->pipelineCache();
-    CC_ASSERT(pipelineCache != nullptr);
-    pipelineCache->setDirty();
-    VK_CHECK(vkCreateComputePipelines(device->gpuDevice()->vkDevice, pipelineCache->getHandle(),
+    VK_CHECK(vkCreateComputePipelines(device->gpuDevice()->vkDevice, device->gpuDevice()->vkPipelineCache,
                                       1, &createInfo, nullptr, &gpuPipelineState->vkPipeline));
 }
 
@@ -1163,16 +1149,6 @@ void cmdFuncCCVKCreateGraphicsPipelineState(CCVKDevice *device, CCVKGPUPipelineS
     colorBlendState.blendConstants[3] = blendColor.w;
     createInfo.pColorBlendState = &colorBlendState;
 
-    ///////////////////// ShadingRate /////////////////////
-    VkPipelineFragmentShadingRateStateCreateInfoKHR shadingRateInfo = {VK_STRUCTURE_TYPE_PIPELINE_FRAGMENT_SHADING_RATE_STATE_CREATE_INFO_KHR};
-    if (device->getCapabilities().supportVariableRateShading &&
-        gpuPipelineState->gpuRenderPass->hasShadingAttachment(gpuPipelineState->subpass)) {
-        shadingRateInfo.fragmentSize = {1, 1}; // perDraw && perVertex shading rate not support.
-        shadingRateInfo.combinerOps[0] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_KEEP_KHR;
-        shadingRateInfo.combinerOps[1] = VK_FRAGMENT_SHADING_RATE_COMBINER_OP_REPLACE_KHR;
-        createInfo.pNext = &shadingRateInfo;
-    }
-
     ///////////////////// References /////////////////////
 
     createInfo.layout = gpuPipelineState->gpuPipelineLayout->vkPipelineLayout;
@@ -1180,10 +1156,8 @@ void cmdFuncCCVKCreateGraphicsPipelineState(CCVKDevice *device, CCVKGPUPipelineS
     createInfo.subpass = gpuPipelineState->subpass;
 
     ///////////////////// Creation /////////////////////
-    auto *pipelineCache = device->pipelineCache();
-    CC_ASSERT(pipelineCache != nullptr);
-    pipelineCache->setDirty();
-    VK_CHECK(vkCreateGraphicsPipelines(device->gpuDevice()->vkDevice, pipelineCache->getHandle(),
+
+    VK_CHECK(vkCreateGraphicsPipelines(device->gpuDevice()->vkDevice, device->gpuDevice()->vkPipelineCache,
                                        1, &createInfo, nullptr, &gpuPipelineState->vkPipeline));
 }
 
@@ -1195,24 +1169,6 @@ void cmdFuncCCVKCreateGeneralBarrier(CCVKDevice * /*device*/, CCVKGPUGeneralBarr
 
     thsvsGetVulkanMemoryBarrier(gpuGeneralBarrier->barrier, &gpuGeneralBarrier->srcStageMask, &gpuGeneralBarrier->dstStageMask, &gpuGeneralBarrier->vkBarrier);
 }
-
-namespace {
-void bufferUpload(const CCVKGPUBufferView &stagingBuffer, CCVKGPUBuffer &gpuBuffer, VkBufferCopy region, const CCVKGPUCommandBuffer *gpuCommandBuffer) {
-#if BARRIER_DEDUCTION_LEVEL >= BARRIER_DEDUCTION_LEVEL_BASIC
-    if (gpuBuffer.transferAccess) {
-        // guard against WAW hazard
-        VkMemoryBarrier vkBarrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
-        vkBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        vkBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
-        vkCmdPipelineBarrier(gpuCommandBuffer->vkCommandBuffer,
-                             VK_PIPELINE_STAGE_TRANSFER_BIT,
-                             VK_PIPELINE_STAGE_TRANSFER_BIT,
-                             0, 1, &vkBarrier, 0, nullptr, 0, nullptr);
-    }
-#endif
-    vkCmdCopyBuffer(gpuCommandBuffer->vkCommandBuffer, stagingBuffer.gpuBuffer->vkBuffer, gpuBuffer.vkBuffer, 1, &region);
-};
-} // namespace
 
 void cmdFuncCCVKUpdateBuffer(CCVKDevice *device, CCVKGPUBuffer *gpuBuffer, const void *buffer, uint32_t size, const CCVKGPUCommandBuffer *cmdBuffer) {
     if (!gpuBuffer) return;
@@ -1265,34 +1221,36 @@ void cmdFuncCCVKUpdateBuffer(CCVKDevice *device, CCVKGPUBuffer *gpuBuffer, const
         }
     }
 
-    // upload buffer by chunks
-    uint32_t chunkSize = std::min(sizeToUpload, CCVKGPUStagingBufferPool::CHUNK_SIZE);
+    CCVKGPUBuffer stagingBuffer;
+    stagingBuffer.size = sizeToUpload;
+    device->gpuStagingBufferPool()->alloc(&stagingBuffer);
+    memcpy(stagingBuffer.mappedData, dataToUpload, sizeToUpload);
 
-    uint32_t chunkOffset = 0U;
-    while (sizeToUpload) {
-        uint32_t chunkSizeToUpload = std::min(chunkSize, static_cast<uint32_t>(sizeToUpload));
-        sizeToUpload -= chunkSizeToUpload;
-
-        IntrusivePtr<CCVKGPUBufferView> stagingBuffer = device->gpuStagingBufferPool()->alloc(chunkSizeToUpload);
-        memcpy(stagingBuffer->mappedData(), static_cast<const char *>(dataToUpload) + chunkOffset, chunkSizeToUpload);
-
-        VkBufferCopy region{
-            stagingBuffer->offset,
-            gpuBuffer->getStartOffset(backBufferIndex) + chunkOffset,
-            chunkSizeToUpload,
-        };
-
-        chunkOffset += chunkSizeToUpload;
-
-        if (cmdBuffer) {
-            bufferUpload(*stagingBuffer, *gpuBuffer, region, cmdBuffer);
-        } else {
-            device->gpuTransportHub()->checkIn(
-                // capture by ref is safe here since the transport function will be executed immediately in the same thread
-                [&stagingBuffer, &gpuBuffer, region](CCVKGPUCommandBuffer *gpuCommandBuffer) {
-                    bufferUpload(*stagingBuffer, *gpuBuffer, region, gpuCommandBuffer);
-                });
+    VkBufferCopy region{
+        stagingBuffer.startOffset,
+        gpuBuffer->getStartOffset(backBufferIndex),
+        sizeToUpload,
+    };
+    auto upload = [&stagingBuffer, &gpuBuffer, &region](const CCVKGPUCommandBuffer *gpuCommandBuffer) {
+#if BARRIER_DEDUCTION_LEVEL >= BARRIER_DEDUCTION_LEVEL_BASIC
+        if (gpuBuffer->transferAccess) {
+            // guard against WAW hazard
+            VkMemoryBarrier vkBarrier{VK_STRUCTURE_TYPE_MEMORY_BARRIER};
+            vkBarrier.srcAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            vkBarrier.dstAccessMask = VK_ACCESS_TRANSFER_WRITE_BIT;
+            vkCmdPipelineBarrier(gpuCommandBuffer->vkCommandBuffer,
+                                 VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                 VK_PIPELINE_STAGE_TRANSFER_BIT,
+                                 0, 1, &vkBarrier, 0, nullptr, 0, nullptr);
         }
+#endif
+        vkCmdCopyBuffer(gpuCommandBuffer->vkCommandBuffer, stagingBuffer.vkBuffer, gpuBuffer->vkBuffer, 1, &region);
+    };
+
+    if (cmdBuffer) {
+        upload(cmdBuffer);
+    } else {
+        device->gpuTransportHub()->checkIn(upload);
     }
 
     gpuBuffer->transferAccess = THSVS_ACCESS_TRANSFER_WRITE;
@@ -1396,24 +1354,25 @@ void cmdFuncCCVKCopyBuffersToTexture(CCVKDevice *device, const uint8_t *const *b
                     heightOffset = static_cast<int32_t>(h);
                     stepHeight = std::min(chunkHeight, extent.height - h);
 
-                    uint32_t stagingBufferSize = rowPitchSize * (stepHeight / blockSize.second);
-                    IntrusivePtr<CCVKGPUBufferView> stagingBuffer = device->gpuStagingBufferPool()->alloc(stagingBufferSize, offsetAlignment);
+                    CCVKGPUBuffer stagingBuffer;
+                    stagingBuffer.size = rowPitchSize * (stepHeight / blockSize.second);
+                    device->gpuStagingBufferPool()->alloc(&stagingBuffer, offsetAlignment);
 
                     for (uint32_t j = 0; j < stepHeight; j += blockSize.second) {
-                        memcpy(stagingBuffer->mappedData() + destOffset, buffers[idx] + buffOffset, destRowSize);
+                        memcpy(stagingBuffer.mappedData + destOffset, buffers[idx] + buffOffset, destRowSize);
                         destOffset += rowPitchSize;
                         buffOffset += buffStrideSize;
                     }
 
                     VkBufferImageCopy stagingRegion;
-                    stagingRegion.bufferOffset = stagingBuffer->offset;
+                    stagingRegion.bufferOffset = stagingBuffer.startOffset;
                     stagingRegion.bufferRowLength = rowPitch;
                     stagingRegion.bufferImageHeight = stepHeight;
                     stagingRegion.imageSubresource = {gpuTexture->aspectMask, mipLevel, l + baseLayer, 1};
                     stagingRegion.imageOffset = {offset.x, offset.y + heightOffset, offset.z + static_cast<int>(depth)};
                     stagingRegion.imageExtent = {destWidth, std::min(stepHeight, destHeight - heightOffset), 1};
 
-                    vkCmdCopyBufferToImage(gpuCommandBuffer->vkCommandBuffer, stagingBuffer->gpuBuffer->vkBuffer, gpuTexture->vkImage,
+                    vkCmdCopyBufferToImage(gpuCommandBuffer->vkCommandBuffer, stagingBuffer.vkBuffer, gpuTexture->vkImage,
                                            VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL, 1, &stagingRegion);
                 }
             }
@@ -1474,7 +1433,7 @@ void cmdFuncCCVKCopyBuffersToTexture(CCVKDevice *device, const uint8_t *const *b
     device->gpuBarrierManager()->checkIn(gpuTexture);
 }
 
-void cmdFuncCCVKCopyTextureToBuffers(CCVKDevice *device, CCVKGPUTexture *srcTexture, CCVKGPUBufferView *destBuffer,
+void cmdFuncCCVKCopyTextureToBuffers(CCVKDevice *device, CCVKGPUTexture *srcTexture, CCVKGPUBuffer *destBuffer,
                                      const BufferTextureCopy *regions, uint32_t count, const CCVKGPUCommandBuffer *gpuCommandBuffer) {
     ccstd::vector<ThsvsAccessType> &curTypes = srcTexture->currentAccessTypes;
 
@@ -1500,7 +1459,7 @@ void cmdFuncCCVKCopyTextureToBuffers(CCVKDevice *device, CCVKGPUTexture *srcText
     for (size_t i = 0U; i < count; ++i) {
         const BufferTextureCopy &region = regions[i];
         VkBufferImageCopy &stagingRegion = stagingRegions[i];
-        stagingRegion.bufferOffset = destBuffer->offset + offset;
+        stagingRegion.bufferOffset = destBuffer->startOffset + offset;
         stagingRegion.bufferRowLength = region.buffStride;
         stagingRegion.bufferImageHeight = region.buffTexHeight;
         stagingRegion.imageSubresource = {srcTexture->aspectMask, region.texSubres.mipLevel, region.texSubres.baseArrayLayer, region.texSubres.layerCount};
@@ -1514,7 +1473,7 @@ void cmdFuncCCVKCopyTextureToBuffers(CCVKDevice *device, CCVKGPUTexture *srcText
         offset += regionSize;
     }
     vkCmdCopyImageToBuffer(gpuCommandBuffer->vkCommandBuffer, srcTexture->vkImage, VK_IMAGE_LAYOUT_TRANSFER_SRC_OPTIMAL,
-                           destBuffer->gpuBuffer->vkBuffer, utils::toUint(stagingRegions.size()), stagingRegions.data());
+                           destBuffer->vkBuffer, utils::toUint(stagingRegions.size()), stagingRegions.data());
 
     curTypes.assign({THSVS_ACCESS_TRANSFER_READ});
     srcTexture->transferAccess = THSVS_ACCESS_TRANSFER_READ;
@@ -1550,6 +1509,11 @@ void cmdFuncCCVKDestroyShader(CCVKGPUDevice *gpuDevice, CCVKGPUShader *gpuShader
 }
 
 void cmdFuncCCVKDestroyDescriptorSetLayout(CCVKGPUDevice *gpuDevice, CCVKGPUDescriptorSetLayout *gpuDescriptorSetLayout) {
+    if (gpuDescriptorSetLayout->defaultDescriptorSet != VK_NULL_HANDLE) {
+        gpuDevice->getDescriptorSetPool(gpuDescriptorSetLayout->id)->yield(gpuDescriptorSetLayout->defaultDescriptorSet, 0);
+        gpuDescriptorSetLayout->defaultDescriptorSet = VK_NULL_HANDLE;
+    }
+
     if (gpuDescriptorSetLayout->vkDescriptorUpdateTemplate != VK_NULL_HANDLE) {
         if (gpuDevice->minorVersion > 0) {
             vkDestroyDescriptorUpdateTemplate(gpuDevice->vkDevice, gpuDescriptorSetLayout->vkDescriptorUpdateTemplate, nullptr);
@@ -1598,10 +1562,90 @@ const CCVKGPUGeneralBarrier *CCVKGPURenderPass::getBarrier(size_t index, CCVKGPU
     return depthStencilAttachment.barrier ? static_cast<CCVKGeneralBarrier *>(depthStencilAttachment.barrier)->gpuBarrier() : &gpuDevice->defaultDepthStencilBarrier;
 }
 
-bool CCVKGPURenderPass::hasShadingAttachment(uint32_t subPassId) const
-{
-        CC_ASSERT(subPassId < subpasses.size());
-        return subpasses[subPassId].shadingRate != INVALID_BINDING;
+void CCVKGPURecycleBin::clear() {
+    for (uint32_t i = 0U; i < _count; ++i) {
+        Resource &res = _resources[i];
+        switch (res.type) {
+            case RecycledType::BUFFER:
+                if (res.buffer.vkBuffer) {
+                    vmaDestroyBuffer(_device->memoryAllocator, res.buffer.vkBuffer, res.buffer.vmaAllocation);
+                    res.buffer.vkBuffer = VK_NULL_HANDLE;
+                    res.buffer.vmaAllocation = VK_NULL_HANDLE;
+                }
+                break;
+            case RecycledType::TEXTURE:
+                if (res.image.vkImage) {
+                    vmaDestroyImage(_device->memoryAllocator, res.image.vkImage, res.image.vmaAllocation);
+                    res.image.vkImage = VK_NULL_HANDLE;
+                    res.image.vmaAllocation = VK_NULL_HANDLE;
+                }
+                break;
+            case RecycledType::TEXTURE_VIEW:
+                if (res.vkImageView) {
+                    vkDestroyImageView(_device->vkDevice, res.vkImageView, nullptr);
+                    res.vkImageView = VK_NULL_HANDLE;
+                }
+                break;
+            case RecycledType::FRAMEBUFFER:
+                if (res.vkFramebuffer) {
+                    vkDestroyFramebuffer(_device->vkDevice, res.vkFramebuffer, nullptr);
+                    res.vkFramebuffer = VK_NULL_HANDLE;
+                }
+                break;
+            case RecycledType::QUERY_POOL:
+                if (res.gpuQueryPool) {
+                    cmdFuncCCVKDestroyQueryPool(_device, res.gpuQueryPool);
+                    delete res.gpuQueryPool;
+                    res.gpuQueryPool = nullptr;
+                }
+                break;
+            case RecycledType::RENDER_PASS:
+                if (res.gpuRenderPass) {
+                    cmdFuncCCVKDestroyRenderPass(_device, res.gpuRenderPass);
+                    delete res.gpuRenderPass;
+                    res.gpuRenderPass = nullptr;
+                }
+                break;
+            case RecycledType::SAMPLER:
+                if (res.gpuSampler) {
+                    cmdFuncCCVKDestroySampler(_device, res.gpuSampler);
+                    delete res.gpuSampler;
+                    res.gpuSampler = nullptr;
+                }
+                break;
+            case RecycledType::SHADER:
+                if (res.gpuShader) {
+                    cmdFuncCCVKDestroyShader(_device, res.gpuShader);
+                    delete res.gpuShader;
+                    res.gpuShader = nullptr;
+                }
+                break;
+            case RecycledType::DESCRIPTOR_SET_LAYOUT:
+                if (res.gpuDescriptorSetLayout) {
+                    cmdFuncCCVKDestroyDescriptorSetLayout(_device, res.gpuDescriptorSetLayout);
+                    delete res.gpuDescriptorSetLayout;
+                    res.gpuDescriptorSetLayout = nullptr;
+                }
+                break;
+            case RecycledType::PIPELINE_LAYOUT:
+                if (res.gpuPipelineLayout) {
+                    cmdFuncCCVKDestroyPipelineLayout(_device, res.gpuPipelineLayout);
+                    delete res.gpuPipelineLayout;
+                    res.gpuPipelineLayout = nullptr;
+                }
+                break;
+            case RecycledType::PIPELINE_STATE:
+                if (res.gpuPipelineState) {
+                    cmdFuncCCVKDestroyPipelineState(_device, res.gpuPipelineState);
+                    delete res.gpuPipelineState;
+                    res.gpuPipelineState = nullptr;
+                }
+                break;
+            default: break;
+        }
+        res.type = RecycledType::UNKNOWN;
+    }
+    _count = 0;
 }
 
 VkSampleCountFlagBits CCVKGPUContext::getSampleCountForAttachments(Format format, VkFormat vkFormat, SampleCount sampleCount) const {
@@ -1742,6 +1786,14 @@ void CCVKGPUBufferHub::flush(CCVKGPUTransportHub *transportHub) {
     }
 
     buffers.clear();
+}
+
+void CCVKGPUFramebufferHub::update(CCVKGPUTexture *texture) {
+    auto &pool = _framebuffers[texture];
+    for (auto *framebuffer : pool) {
+        CCVKDevice::getInstance()->gpuRecycleBin()->collect(framebuffer);
+        cmdFuncCCVKCreateFramebuffer(CCVKDevice::getInstance(), framebuffer);
+    }
 }
 
 } // namespace gfx

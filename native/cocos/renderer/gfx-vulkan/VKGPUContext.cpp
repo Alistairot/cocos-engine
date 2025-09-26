@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2020-2022 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -54,11 +55,11 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugUtilsMessengerCallback(VkDebugUtilsMessageSe
         return VK_FALSE;
     }
     if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_INFO_BIT_EXT) {
-        // CC_LOG_INFO("%s: %s", callbackData->pMessageIdName, callbackData->pMessage);
+        //CC_LOG_INFO("%s: %s", callbackData->pMessageIdName, callbackData->pMessage);
         return VK_FALSE;
     }
     if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
-        // CC_LOG_DEBUG("%s: %s", callbackData->pMessageIdName, callbackData->pMessage);
+        //CC_LOG_DEBUG("%s: %s", callbackData->pMessageIdName, callbackData->pMessage);
         return VK_FALSE;
     }
     CC_LOG_ERROR("%s: %s", callbackData->pMessageIdName, callbackData->pMessage);
@@ -83,11 +84,11 @@ VKAPI_ATTR VkBool32 VKAPI_CALL debugReportCallback(VkDebugReportFlagsEXT flags,
         return VK_FALSE;
     }
     if (flags & VK_DEBUG_REPORT_INFORMATION_BIT_EXT) {
-        // CC_LOG_INFO("%s: %s", layerPrefix, message);
+        //CC_LOG_INFO("%s: %s", layerPrefix, message);
         return VK_FALSE;
     }
     if (flags & VK_DEBUG_REPORT_DEBUG_BIT_EXT) {
-        // CC_LOG_DEBUG("%s: %s", layerPrefix, message);
+        //CC_LOG_DEBUG("%s: %s", layerPrefix, message);
         return VK_FALSE;
     }
     CC_LOG_ERROR("%s: %s", layerPrefix, message);
@@ -120,7 +121,7 @@ bool CCVKGPUContext::initialize() {
     }
 
     IXRInterface *xr = CC_GET_XR_INTERFACE();
-    if (xr) apiVersion = xr->getXRVkApiVersion(apiVersion);
+    if(xr) apiVersion = xr->getXRVkApiVersion(apiVersion);
     minorVersion = VK_VERSION_MINOR(apiVersion);
     if (minorVersion < 1) {
         requestedExtensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
@@ -142,12 +143,8 @@ bool CCVKGPUContext::initialize() {
     requestedExtensions.push_back(VK_KHR_WIN32_SURFACE_EXTENSION_NAME);
 #elif defined(VK_USE_PLATFORM_VI_NN)
     requestedExtensions.push_back(VK_NN_VI_SURFACE_EXTENSION_NAME);
-#elif defined(VK_USE_PLATFORM_MACOS_MVK)
-    requestedExtensions.push_back(VK_MVK_MACOS_SURFACE_EXTENSION_NAME);
-    if (minorVersion >= 3) {
-        requestedExtensions.push_back("VK_KHR_portability_enumeration");
-        requestedExtensions.push_back("VK_KHR_portability_subset");
-    }
+#elif defined(VK_USE_PLATFORM_METAL_EXT)
+    requestedExtensions.push_back(VK_EXT_METAL_SURFACE_EXTENSION_NAME);
 #elif defined(VK_USE_PLATFORM_WAYLAND_KHR)
     requestedExtensions.push_back(VK_KHR_WAYLAND_SURFACE_EXTENSION_NAME);
 #elif defined(VK_USE_PLATFORM_XCB_KHR)
@@ -218,12 +215,6 @@ bool CCVKGPUContext::initialize() {
     app.apiVersion = apiVersion;
 
     VkInstanceCreateInfo instanceInfo{VK_STRUCTURE_TYPE_INSTANCE_CREATE_INFO};
-#if defined(VK_USE_PLATFORM_MACOS_MVK)
-    if (minorVersion >= 3) {
-        instanceInfo.flags |= 0x01; // VK_INSTANCE_CREATE_ENUMERATE_PORTABILITY_BIT_KHR;
-    }
-#endif
-
     instanceInfo.pApplicationInfo = &app;
     instanceInfo.enabledExtensionCount = utils::toUint(extensions.size());
     instanceInfo.ppEnabledExtensionNames = extensions.data();
@@ -255,7 +246,7 @@ bool CCVKGPUContext::initialize() {
 #endif
 
     // Create the Vulkan instance
-    if (xr) {
+    if(xr) {
         xr->initializeVulkanData(vkGetInstanceProcAddr);
         vkInstance = xr->createXRVulkanInstance(instanceInfo);
     } else {
@@ -287,7 +278,7 @@ bool CCVKGPUContext::initialize() {
     }
 
     ccstd::vector<VkPhysicalDevice> physicalDeviceHandles(physicalDeviceCount);
-    if (xr) {
+    if(xr) {
         physicalDeviceHandles[0] = xr->getXRVulkanGraphicsDevice();
     } else {
         VK_CHECK(vkEnumeratePhysicalDevices(vkInstance, &physicalDeviceCount, physicalDeviceHandles.data()));
@@ -322,7 +313,6 @@ bool CCVKGPUContext::initialize() {
     if (minorVersion >= 1 || checkExtension(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME)) {
         physicalDeviceFeatures2.pNext = &physicalDeviceVulkan11Features;
         physicalDeviceVulkan11Features.pNext = &physicalDeviceVulkan12Features;
-        physicalDeviceVulkan12Features.pNext = &physicalDeviceFragmentShadingRateFeatures;
         physicalDeviceProperties2.pNext = &physicalDeviceDepthStencilResolveProperties;
         if (minorVersion >= 1) {
             vkGetPhysicalDeviceProperties2(physicalDevice, &physicalDeviceProperties2);

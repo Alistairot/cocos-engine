@@ -1,8 +1,6 @@
 'use strict';
 
-const { updateElementReadonly, updateElementInvalid } = require('../utils/assets');
-
-exports.template = /* html */`
+exports.template = `
 <section class="asset-scene">
     <ui-prop>
         <ui-label slot="label" value="Persistent"></ui-label>
@@ -15,16 +13,30 @@ exports.$ = {
     persistentCheckbox: '.persistent-checkbox',
 };
 
-exports.ready = function() {
-    const panel = this;
+exports.style = `
 
-    panel.$.persistentCheckbox.addEventListener('confirm', (event) => {
-        panel.metaList.forEach((meta) => {
-            meta.userData.persistent = event.target.value;
+`;
+
+exports.methods = {
+    /**
+     * Update whether a data is editable in multi-select state
+     */
+     updateInvalid(element, prop) {
+        const invalid = this.metaList.some((meta) => {
+            return meta.userData[prop] !== this.meta.userData[prop];
         });
-        panel.dispatch('change');
-        panel.dispatch('snapshot');
-    });
+        element.invalid = invalid;
+    },
+    /**
+     * Update read-only status
+     */
+    updateReadonly(element) {
+        if (this.asset.readonly) {
+            element.setAttribute('disabled', true);
+        } else {
+            element.removeAttribute('disabled');
+        }
+    },
 };
 
 exports.update = function(assetList, metaList) {
@@ -34,9 +46,20 @@ exports.update = function(assetList, metaList) {
     panel.metaList = metaList;
     panel.asset = assetList[0];
     panel.meta = metaList[0];
-
+    
+    // persistent
+    panel.updateInvalid(panel.$.persistentCheckbox, 'persistent');
+    panel.updateReadonly(panel.$.persistentCheckbox);
     panel.$.persistentCheckbox.value = panel.meta.userData.persistent;
+};
 
-    updateElementInvalid.call(panel, panel.$.persistentCheckbox, 'persistent');
-    updateElementReadonly.call(panel, panel.$.persistentCheckbox);
+exports.ready = function() {
+    const panel = this;
+
+    panel.$.persistentCheckbox.addEventListener('change', (event) => {
+        panel.metaList.forEach((meta) => {
+            meta.userData.persistent = event.target.value;
+        });
+        panel.dispatch('change');
+    });
 };

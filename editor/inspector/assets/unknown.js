@@ -1,4 +1,11 @@
 'use strict';
 exports.template = '';
 exports.$ = {};
-exports.update = async function() {};
+/**
+ * 自动渲染组件的方法
+ * @param dump
+ */
+async function update() {
+
+}
+exports.update = update;

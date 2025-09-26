@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2019-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2019-2022 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -24,7 +25,6 @@
 
 #include <atomic>
 #include <iostream>
-#include <utility>
 
 #include "application/ApplicationManager.h"
 #include "base/Log.h"
@@ -37,16 +37,16 @@
 
 namespace {
 
-std::atomic_int32_t aliveServer{0}; //debug info
+std::atomic_int32_t _aliveServer{0}; //debug info
 
 struct lws_protocols protocols[] = {
     {"", //protocol name
-     cc::network::WebSocketServer::websocketServerCallback,
+     cc::network::WebSocketServer::_websocketServerCallback,
      sizeof(int),
      MAX_MSG_PAYLOAD},
     {nullptr, nullptr, 0}};
 
-const struct lws_extension EXTS[] = {
+const struct lws_extension exts[] = {
     {"permessage-deflate",
      lws_extension_callback_pm_deflate,
      "permessage-deflate; client_on_context_takeover; client_max_window_bits"},
@@ -61,8 +61,8 @@ struct AsyncTaskData {
 };
 
 // run in server thread loop
-void flushTasksInServerLoopCb(uv_async_t *async) {
-    auto *data = static_cast<AsyncTaskData *>(async->data);
+void flush_tasks_in_server_loop_cb(uv_async_t *asyn) {
+    AsyncTaskData *data = (AsyncTaskData *)asyn->data;
     std::lock_guard<std::mutex> guard(data->mtx);
     while (!data->tasks.empty()) {
         // fetch task, run task
@@ -71,21 +71,21 @@ void flushTasksInServerLoopCb(uv_async_t *async) {
         data->tasks.pop_front();
     }
 }
-void initLibuvAsyncHandle(uv_loop_t *loop, uv_async_t *async) {
+void init_libuv_async_handle(uv_loop_t *loop, uv_async_t *async) {
     memset(async, 0, sizeof(uv_async_t));
-    uv_async_init(loop, async, flushTasksInServerLoopCb);
+    uv_async_init(loop, async, flush_tasks_in_server_loop_cb);
     async->data = ccnew AsyncTaskData();
 }
 
 // run in game thread, dispatch runnable object into server loop
-void schedule_task_into_server_thread_task_queue(uv_async_t *async, std::function<void()> func) {
-    auto *data = static_cast<AsyncTaskData *>(async->data);
+void schedule_task_into_server_thread_task_queue(uv_async_t *asyn, std::function<void()> func) {
+    AsyncTaskData *data = (AsyncTaskData *)asyn->data;
     if (data) {
         std::lock_guard<std::mutex> guard(data->mtx);
         data->tasks.emplace_back(func);
     }
-    //notify server thread to invoke `flushTasksInServerLoopCb()`
-    uv_async_send(async);
+    //notify server thread to invoke `flush_tasks_in_server_loop_cb()`
+    uv_async_send(asyn);
 }
 
 } // namespace
@@ -120,7 +120,7 @@ namespace network {
 //#define LOGE() CCLOG("WSS: %s", __FUNCTION__)
 #define LOGE()
 
-DataFrame::DataFrame(const ccstd::string &data) {
+DataFrame::DataFrame(const ccstd::string &data) : _isBinary(false) {
     _underlyingData.resize(data.size() + LWS_PRE);
     memcpy(getData(), data.c_str(), data.length());
 }
@@ -128,6 +128,9 @@ DataFrame::DataFrame(const ccstd::string &data) {
 DataFrame::DataFrame(const void *data, int len, bool isBinary) : _isBinary(isBinary) {
     _underlyingData.resize(len + LWS_PRE);
     memcpy(getData(), data, len);
+}
+
+DataFrame::~DataFrame() {
 }
 
 void DataFrame::append(unsigned char *p, int len) {
@@ -143,7 +146,7 @@ int DataFrame::slice(unsigned char **p, int len) {
 }
 
 int DataFrame::consume(int len) {
-    _consumed = (len + _consumed) > size() ? size() : (len + _consumed);
+    _consumed = len + _consumed > size() ? size() : len + _consumed;
     return _consumed;
 }
 
@@ -152,38 +155,37 @@ int DataFrame::remain() const {
 }
 
 ccstd::string DataFrame::toString() {
-    return ccstd::string(reinterpret_cast<char *>(getData()), size());
+    return ccstd::string((char *)getData(), size());
 }
 
 WebSocketServer::WebSocketServer() {
-    aliveServer.fetch_add(1);
+    _aliveServer.fetch_add(1);
 }
 
 WebSocketServer::~WebSocketServer() {
-    aliveServer.fetch_sub(1);
+    _aliveServer.fetch_sub(1);
     destroyContext();
 }
 
-bool WebSocketServer::close(const std::function<void(const ccstd::string &errorMsg)> &callback) {
+bool WebSocketServer::close(std::function<void(const ccstd::string &errorMsg)> callback) {
     if (_serverState.load() != ServerThreadState::RUNNING) {
         return false;
     }
     _serverState.store(ServerThreadState::STOPPED);
     _onclose_cb = callback;
-    if (_ctx) {
+    if (_ctx)
         lws_libuv_stop(_ctx);
-    }
     return true;
 }
 
-void WebSocketServer::closeAsync(const std::function<void(const ccstd::string &errorMsg)> &callback) {
+void WebSocketServer::closeAsync(std::function<void(const ccstd::string &errorMsg)> callback) {
     if (_serverState.load() != ServerThreadState::RUNNING) {
         return;
     }
     RUN_IN_SERVERTHREAD(this->close(callback));
 }
 
-void WebSocketServer::listen(const std::shared_ptr<WebSocketServer> &server, int port, const ccstd::string &host, const std::function<void(const ccstd::string &errorMsg)> &callback) {
+void WebSocketServer::listen(std::shared_ptr<WebSocketServer> server, int port, const ccstd::string &host, std::function<void(const ccstd::string &errorMsg)> callback) {
     auto tryLock = server->_serverLock.try_lock();
     if (!tryLock) {
         CC_LOG_WARNING("websocketserver is already running!");
@@ -216,9 +218,9 @@ void WebSocketServer::listen(const std::shared_ptr<WebSocketServer> &server, int
     info.protocols = protocols;
     info.gid = -1;
     info.uid = -1;
-    info.extensions = EXTS;
+    info.extensions = exts;
     info.options = LWS_SERVER_OPTION_VALIDATE_UTF8 | LWS_SERVER_OPTION_LIBUV | LWS_SERVER_OPTION_SKIP_SERVER_CANONICAL_NAME;
-    info.timeout_secs = 60;
+    info.timeout_secs = 60; //
     info.max_http_header_pool = 1;
     info.user = server.get();
 
@@ -246,13 +248,13 @@ void WebSocketServer::listen(const std::shared_ptr<WebSocketServer> &server, int
     }
 
     loop = lws_uv_getloop(server->_ctx, 0);
-    initLibuvAsyncHandle(loop, &server->_async);
+    init_libuv_async_handle(loop, &server->_async);
     RUN_IN_GAMETHREAD(if (server->_onlistening) server->_onlistening(""));
     RUN_IN_GAMETHREAD(if (server->_onbegin) server->_onbegin());
     RUN_IN_GAMETHREAD(if (callback) callback(""));
 
     lws_libuv_run(server->_ctx, 0);
-    uv_close(reinterpret_cast<uv_handle_t *>(&server->_async), nullptr);
+    uv_close((uv_handle_t *)&server->_async, nullptr);
 
     RUN_IN_GAMETHREAD(if (server->_onclose) server->_onclose(""));
     RUN_IN_GAMETHREAD(if (server->_onclose_cb) server->_onclose_cb(""));
@@ -260,9 +262,10 @@ void WebSocketServer::listen(const std::shared_ptr<WebSocketServer> &server, int
     server->_serverState = ServerThreadState::STOPPED;
     server->destroyContext();
     server->_serverLock.unlock();
+    return;
 }
 
-void WebSocketServer::listenAsync(std::shared_ptr<WebSocketServer> &server, int port, const ccstd::string &host, const std::function<void(const ccstd::string &errorMsg)> &callback) {
+void WebSocketServer::listenAsync(std::shared_ptr<WebSocketServer> &server, int port, const ccstd::string &host, std::function<void(const ccstd::string &errorMsg)> callback) {
     std::thread([=]() {
         WebSocketServer::listen(server, port, host, callback);
     }).detach();
@@ -316,7 +319,7 @@ void WebSocketServer::onCloseClientInit(struct lws *wsi, void *in, int len) {
 
     if (conn && len > 2) {
         code = ntohs(*(int16_t *)in);
-        msg = static_cast<char *>(in) + sizeof(code);
+        msg = (char *)in + sizeof(code);
         ccstd::string cp(msg, len - sizeof(code));
         conn->onClientCloseInit(code, cp);
     } else {
@@ -327,14 +330,14 @@ void WebSocketServer::onCloseClientInit(struct lws *wsi, void *in, int len) {
 void WebSocketServer::onClientReceive(struct lws *wsi, void *in, int len) {
     std::shared_ptr<WebSocketServerConnection> conn = findConnection(wsi);
     if (conn) {
-        conn->onMessageReceive(in, len);
+        conn->onDataReceive(in, len);
     }
 }
 int WebSocketServer::onServerWritable(struct lws *wsi) {
     LOGE();
     std::shared_ptr<WebSocketServerConnection> conn = findConnection(wsi);
     if (conn) {
-        return conn->onDrainMessage();
+        return conn->onDrainData();
     }
     return 0;
 }
@@ -360,26 +363,26 @@ std::shared_ptr<WebSocketServerConnection> WebSocketServer::findConnection(struc
 }
 
 void WebSocketServer::destroyContext() {
-    _serverState.store(ServerThreadState::DESTROYED);
+    _serverState.store(ServerThreadState::DESTROIED);
     if (_ctx) {
         lws_context_destroy(_ctx);
         lws_context_destroy2(_ctx);
         _ctx = nullptr;
     }
     if (_async.data) {
-        delete static_cast<AsyncTaskData *>(_async.data);
+        delete (AsyncTaskData *)_async.data;
         _async.data = nullptr;
     }
 }
 
 WebSocketServerConnection::WebSocketServerConnection(struct lws *wsi) : _wsi(wsi) {
     uv_loop_t *loop = lws_uv_getloop(lws_get_context(wsi), 0);
-    initLibuvAsyncHandle(loop, &_async);
+    init_libuv_async_handle(loop, &_async);
 }
 
 WebSocketServerConnection::~WebSocketServerConnection() {
     if (_async.data) {
-        delete static_cast<AsyncTaskData *>(_async.data);
+        delete (AsyncTaskData *)_async.data;
         _async.data = nullptr;
     }
     CC_LOG_INFO("~destroy ws connection");
@@ -394,7 +397,7 @@ bool WebSocketServerConnection::send(std::shared_ptr<DataFrame> data) {
     return true;
 }
 
-void WebSocketServerConnection::sendTextAsync(const ccstd::string &text, const std::function<void(const ccstd::string &)> &callback) {
+void WebSocketServerConnection::sendTextAsync(const ccstd::string &text, std::function<void(const ccstd::string &)> callback) {
     LOGE();
     std::shared_ptr<DataFrame> data = std::make_shared<DataFrame>(text);
     if (callback) {
@@ -403,7 +406,7 @@ void WebSocketServerConnection::sendTextAsync(const ccstd::string &text, const s
     RUN_IN_SERVERTHREAD(this->send(data));
 }
 
-void WebSocketServerConnection::sendBinaryAsync(const void *in, size_t len, const std::function<void(const ccstd::string &)> &callback) {
+void WebSocketServerConnection::sendBinaryAsync(const void *in, size_t len, std::function<void(const ccstd::string &)> callback) {
     LOGE();
     std::shared_ptr<DataFrame> data = std::make_shared<DataFrame>(in, len);
     if (callback) {
@@ -412,10 +415,10 @@ void WebSocketServerConnection::sendBinaryAsync(const void *in, size_t len, cons
     RUN_IN_SERVERTHREAD(this->send(data));
 }
 
-bool WebSocketServerConnection::close(int code, const ccstd::string &reason) {
+bool WebSocketServerConnection::close(int code, ccstd::string message) {
     if (!_wsi) return false;
     _readyState = ReadyState::CLOSING;
-    _closeReason = reason;
+    _closeReason = message;
     _closeCode = code;
     onClientCloseInit();
     //trigger callback to return -1 which indicates connection closed
@@ -423,8 +426,8 @@ bool WebSocketServerConnection::close(int code, const ccstd::string &reason) {
     return true;
 }
 
-void WebSocketServerConnection::closeAsync(int code, const ccstd::string &reason) {
-    RUN_IN_SERVERTHREAD(this->close(code, reason));
+void WebSocketServerConnection::closeAsync(int code, ccstd::string message) {
+    RUN_IN_SERVERTHREAD(this->close(code, message));
 }
 
 void WebSocketServerConnection::onConnected() {
@@ -432,14 +435,14 @@ void WebSocketServerConnection::onConnected() {
     RUN_IN_GAMETHREAD(if (_onconnect) _onconnect());
 }
 
-void WebSocketServerConnection::onMessageReceive(void *in, int len) {
-    bool isFinal = static_cast<bool>(lws_is_final_fragment(_wsi));
-    bool isBinary = static_cast<bool>(lws_frame_is_binary(_wsi));
+void WebSocketServerConnection::onDataReceive(void *in, int len) {
+    bool isFinal = (bool)lws_is_final_fragment(_wsi);
+    bool isBinary = (bool)lws_frame_is_binary(_wsi);
 
     if (!_prevPkg) {
         _prevPkg = std::make_shared<DataFrame>(in, len, isBinary);
     } else {
-        _prevPkg->append(static_cast<unsigned char *>(in), len);
+        _prevPkg->append((unsigned char *)in, len);
     }
 
     if (isFinal) {
@@ -452,13 +455,13 @@ void WebSocketServerConnection::onMessageReceive(void *in, int len) {
             RUN_IN_GAMETHREAD(if (_ontext) _ontext(fullpkg));
         }
 
-        RUN_IN_GAMETHREAD(if (_onmessage) _onmessage(fullpkg));
+        RUN_IN_GAMETHREAD(if (_ondata) _ondata(fullpkg));
 
         _prevPkg.reset();
     }
 }
 
-int WebSocketServerConnection::onDrainMessage() {
+int WebSocketServerConnection::onDrainData() {
     if (!_wsi) return -1;
     if (_closed) return -1;
     if (_readyState == ReadyState::CLOSING) {
@@ -466,8 +469,8 @@ int WebSocketServerConnection::onDrainMessage() {
     }
     if (_readyState != ReadyState::OPEN) return 0;
     unsigned char *p = nullptr;
-    int sendLength = 0;
-    int finishLength = 0;
+    int send_len = 0;
+    int finish_len = 0;
     int flags = 0;
 
     ccstd::vector<char> buff(SEND_BUFF + LWS_PRE);
@@ -475,7 +478,7 @@ int WebSocketServerConnection::onDrainMessage() {
     if (!_sendQueue.empty()) {
         std::shared_ptr<DataFrame> frag = _sendQueue.front();
 
-        sendLength = frag->slice(&p, SEND_BUFF);
+        send_len = frag->slice(&p, SEND_BUFF);
 
         if (frag->isFront()) {
             if (frag->isBinary()) {
@@ -486,7 +489,7 @@ int WebSocketServerConnection::onDrainMessage() {
             }
         }
 
-        if (frag->remain() != sendLength) {
+        if (frag->remain() != send_len) {
             // remain bytes > 0
             // not FIN
             flags |= LWS_WRITE_NO_FIN;
@@ -496,17 +499,17 @@ int WebSocketServerConnection::onDrainMessage() {
             flags |= LWS_WRITE_CONTINUATION;
         }
 
-        finishLength = lws_write(_wsi, p, sendLength, static_cast<lws_write_protocol>(flags));
+        finish_len = lws_write(_wsi, p, send_len, (lws_write_protocol)flags);
 
-        if (finishLength == 0) {
+        if (finish_len == 0) {
             frag->onFinish("Connection Closed");
             return -1;
-        }
-        if (finishLength < 0) {
+        } else if (finish_len < 0) {
             frag->onFinish("Send Error!");
             return -1;
+        } else {
+            frag->consume(finish_len);
         }
-        frag->consume(finishLength);
 
         if (frag->remain() == 0) {
             frag->onFinish("");
@@ -523,13 +526,12 @@ void WebSocketServerConnection::onHTTP() {
 
     _headers.clear();
 
-    int n = 0;
-    int len;
+    int n = 0, len;
     ccstd::vector<char> buf(256);
     const char *c;
     do {
-        auto idx = static_cast<lws_token_indexes>(n);
-        c = reinterpret_cast<const char *>(lws_token_to_string(idx));
+        lws_token_indexes idx = static_cast<lws_token_indexes>(n);
+        c = (const char *)lws_token_to_string(idx);
         if (!c) {
             n++;
             break;
@@ -538,11 +540,10 @@ void WebSocketServerConnection::onHTTP() {
         if (!len) {
             n++;
             continue;
-        }
-        if (len + 1 > buf.size()) {
+        } else if (len + 1 > buf.size()) {
             buf.resize(len + 1);
         }
-        lws_hdr_copy(_wsi, buf.data(), static_cast<int>(buf.size()), idx);
+        lws_hdr_copy(_wsi, buf.data(), buf.size(), idx);
         buf[len] = '\0';
         _headers.emplace(ccstd::string(c), ccstd::string(buf.data()));
         n++;
@@ -556,24 +557,24 @@ void WebSocketServerConnection::onClientCloseInit(int code, const ccstd::string 
 
 void WebSocketServerConnection::onClientCloseInit() {
     if (_closed) return;
-    lws_close_reason(_wsi, static_cast<lws_close_status>(_closeCode), const_cast<unsigned char *>(reinterpret_cast<const unsigned char *>(_closeReason.c_str())), _closeReason.length());
+    lws_close_reason(_wsi, (lws_close_status)_closeCode, (unsigned char *)_closeReason.c_str(), _closeReason.length());
     _closed = true;
 }
 
 void WebSocketServerConnection::onDestroyClient() {
     _readyState = ReadyState::CLOSED;
-    //on wsi destroyed
+    //on wsi destroied
     if (_wsi) {
         RUN_IN_GAMETHREAD(if (_onclose) _onclose(_closeCode, _closeReason));
         RUN_IN_GAMETHREAD(if (_onend) _onend());
-        uv_close(reinterpret_cast<uv_handle_t *>(&_async), nullptr);
+        uv_close((uv_handle_t *)&_async, nullptr);
     }
 }
 
 ccstd::vector<ccstd::string> WebSocketServerConnection::getProtocols() {
     ccstd::vector<ccstd::string> ret;
     if (_wsi) {
-        //TODO(): cause abort
+        //TODO cause abort
         //const struct lws_protocols* protos = lws_get_protocol(_wsi);
         //while (protos && protos->name != nullptr)
         //{
@@ -589,18 +590,16 @@ ccstd::unordered_map<ccstd::string, ccstd::string> WebSocketServerConnection::ge
     return _headers;
 }
 
-int WebSocketServer::websocketServerCallback(struct lws *wsi, enum lws_callback_reasons reason,
-                                             void * /*user*/, void *in, size_t len) {
+int WebSocketServer::_websocketServerCallback(struct lws *wsi, enum lws_callback_reasons reason,
+                                              void *user, void *in, size_t len) {
     int ret = 0;
     WebSocketServer *server = nullptr;
     lws_context *ctx = nullptr;
 
-    if (wsi) {
+    if (wsi)
         ctx = lws_get_context(wsi);
-    }
-    if (ctx) {
+    if (ctx)
         server = static_cast<WebSocketServer *>(lws_context_user(ctx));
-    }
 
     if (!server) {
         return 0;
@@ -620,12 +619,12 @@ int WebSocketServer::websocketServerCallback(struct lws *wsi, enum lws_callback_
         case LWS_CALLBACK_CLOSED_HTTP:
             break;
         case LWS_CALLBACK_RECEIVE:
-            server->onClientReceive(wsi, in, static_cast<int>(len));
+            server->onClientReceive(wsi, in, len);
             break;
         case LWS_CALLBACK_RECEIVE_PONG:
             break;
         case LWS_CALLBACK_CLIENT_RECEIVE:
-            server->onClientReceive(wsi, in, static_cast<int>(len));
+            server->onClientReceive(wsi, in, len);
             break;
         case LWS_CALLBACK_CLIENT_RECEIVE_PONG:
             break;
@@ -690,7 +689,7 @@ int WebSocketServer::websocketServerCallback(struct lws *wsi, enum lws_callback_
         case LWS_CALLBACK_OPENSSL_CONTEXT_REQUIRES_PRIVATE_KEY:
             break;
         case LWS_CALLBACK_WS_PEER_INITIATED_CLOSE:
-            server->onCloseClientInit(wsi, in, static_cast<int>(len));
+            server->onCloseClientInit(wsi, in, len);
             break;
         case LWS_CALLBACK_WS_EXT_DEFAULTS:
             break;

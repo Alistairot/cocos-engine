@@ -1,5 +1,4 @@
 #include <common/lighting/brdf>
-#include <common/lighting/attenuation>
 #include <common/lighting/functions>
 
 bool CCSurfacesLightingEnableShadow(in float NoL)
@@ -31,12 +30,13 @@ void CCSurfacesLightingCalculateDirect(out vec3 lightingDiffuse, out vec3 lighti
 
     float NH = 0.5 * lightingData.NoH + 0.5;
     float specularWeight = 1.0 - pow(lightingData.specularParam, 5.0);
-    float specularMask = step(specularWeight + EPSILON_LOWP, NH);
+    float specularMask = step(specularWeight, NH);
     lightingSpecular = irradiance * specularMask;
 }
 
-void CCSurfacesLightingCalculateEnvironment(out vec3 lightingDiffuse, out vec3 lightingSpecular, in LightingIntermediateData lightingData, float lightIntensity)
+void CCSurfacesLightingCalculateEnvironment(inout LightingResult lightingResult, in LightingIntermediateData lightingData)
 {
-  lightingDiffuse = vec3(0.0);
-  lightingSpecular = vec3(0.0);
+  lightingResult.environmentDiffuse = vec3(0.0);
+  lightingResult.environmentSpecular = vec3(0.0);
 }
+

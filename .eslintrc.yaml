@@ -124,5 +124,3 @@ rules:
         allowNumber: true,
         allowBoolean: true
     }]
-
-    '@typescript-eslint/type-annotation-spacing': warn

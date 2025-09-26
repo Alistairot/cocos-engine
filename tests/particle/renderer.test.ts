@@ -1,6 +1,6 @@
-import { director, game } from "../../cocos/game";
-import { scalableContainerManager } from "../../cocos/core/memop/scalable-container";
-import { Node, Scene } from "../../cocos/scene-graph";
+import { director, game, Node, Scene } from "../../cocos/core";
+import { legacyCC } from "../../cocos/core/global-exports";
+import { containerManager } from "../../cocos/core/memop/container-manager";
 import { ParticleSystem } from "../../exports/particle";
 
 test('recycle pool release', () => {
@@ -10,15 +10,17 @@ test('recycle pool release', () => {
     scene.addChild(node);
     game.step();
     // @ts-expect-error access private property 
-    const beforeLength = scalableContainerManager._pools.length;
+    const beforeLength = containerManager._pools.length;
     const comp = node.addComponent(ParticleSystem);
     game.step();
     // @ts-expect-error access private property  
-    const currentLength = scalableContainerManager._pools.length;
+    const currentLength = containerManager._pools.length;
     expect(currentLength).toBeGreaterThan(beforeLength);
     comp.destroy();
     game.step();
 
     // @ts-expect-error
-    expect(scalableContainerManager._pools.length).toBeLessThan(currentLength);
+    expect(containerManager._pools.length).toBeLessThan(currentLength);
+
+    
 });

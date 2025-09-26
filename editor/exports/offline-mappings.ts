@@ -3,10 +3,11 @@
 import {
     Address, BlendFactor, BlendOp, ColorMask, ComparisonFunc, CullMode, DynamicStateFlagBit,
     Filter, Format, FormatInfos, FormatType, GetTypeSize, PolygonMode, PrimitiveMode,
-    ShadeModel, ShaderStageFlagBit, StencilOp, Type, DescriptorType, SamplerInfo, MemoryAccessBit, Sampler,
-} from '../../cocos/gfx';
-import { RenderPassStage, RenderPriority, SetIndex } from '../../cocos/rendering/define';
-import { murmurhash2_32_gc } from '../../cocos/core';
+    ShadeModel, ShaderStageFlagBit, StencilOp, Type, DescriptorType, SamplerInfo, MemoryAccessBit,
+} from '../../cocos/core/gfx/base/define';
+import { RenderPassStage, RenderPriority, SetIndex } from '../../cocos/core/pipeline/define';
+import { murmurhash2_32_gc } from '../../cocos/core/utils/murmurhash2_gc';
+import { Sampler } from '../../cocos/core/gfx/base/states/sampler';
 
 const typeMap: Record<string, Type | string> = {};
 typeMap[typeMap.bool = Type.BOOL] = 'bool';
@@ -95,7 +96,6 @@ typeMap.usampler3D = Type.SAMPLER3D;
 typeMap.isamplerCube = Type.SAMPLER_CUBE;
 typeMap.usamplerCube = Type.SAMPLER_CUBE;
 typeMap.samplerCubeShadow = Type.SAMPLER_CUBE;
-typeMap.uimage2D = Type.IMAGE2D;
 
 const isSampler = (type) => type >= Type.SAMPLER1D;
 const isPaddedMatrix = (type) => type >= Type.MAT2 && type < Type.MAT4;

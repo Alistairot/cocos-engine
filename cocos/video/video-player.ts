@@ -1,17 +1,18 @@
 /*
- Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2017-2020 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+  worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+  not use Cocos Creator software for developing other software or tools that's
+  used for developing games. You are not granted to publish, distribute,
+  sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -20,12 +21,12 @@
  LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
  OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  THE SOFTWARE.
-*/
+ */
 
 import { ccclass, displayOrder, executeInEditMode, help, menu, slide, range, requireComponent, tooltip, type, serializable } from 'cc.decorator';
 import { EDITOR } from 'internal:constants';
 import { warn } from '../core/platform';
-import { Component, EventHandler as ComponentEventHandler } from '../scene-graph';
+import { Component, EventHandler as ComponentEventHandler } from '../core/components';
 import { UITransform } from '../2d/framework';
 import { clamp } from '../core/math';
 import { VideoClip } from './assets/video-clip';
@@ -98,7 +99,7 @@ export class VideoPlayer extends Component {
      * @en
      * The remote URL of video.
      * @zh
-     * 远程视频的 URL。
+     * 远程视频的 URL
      */
     @tooltip('i18n:videoplayer.remoteURL')
     get remoteURL () {
@@ -113,7 +114,7 @@ export class VideoPlayer extends Component {
 
     /**
      * @en
-     * The local video clip.
+     * The local video clip
      * @zh
      * 本地视频剪辑。
      */
@@ -131,9 +132,9 @@ export class VideoPlayer extends Component {
 
     /**
      * @en
-     * Whether the video start playing automatically after loaded.
+     * Whether the video start playing automatically after loaded?
      * @zh
-     * 视频加载后是否自动开始播放。
+     * 视频加载后是否自动开始播放？
      */
     @tooltip('i18n:videoplayer.playOnAwake')
     get playOnAwake () {
@@ -145,9 +146,9 @@ export class VideoPlayer extends Component {
 
     /**
      * @en
-     * The Video playback rate. The value range is from [0.0 ~ 10.0].
+     * The Video playback rate
      * @zh
-     * 视频播放时的速率, 值的区间为[0.0 ~ 10.0]。
+     * 视频播放时的速率（0.0 ~ 10.0）
      */
     @slide
     @range([0.0, 10, 1.0])
@@ -164,9 +165,9 @@ export class VideoPlayer extends Component {
 
     /**
      * @en
-     * The volume of the video. The value range is from [0.0 ~ 1.0].
+     * The volume of the video.
      * @zh
-     * 视频的音量. 值的区间为[0.0 ~ 1.0]。
+     * 视频的音量（0.0 ~ 1.0）
      */
     @slide
     @range([0.0, 1.0, 0.1])
@@ -183,9 +184,9 @@ export class VideoPlayer extends Component {
 
     /**
      * @en
-     * Mutes the VideoPlayer. When the volume is set to 0, the volume is muted, and unmuted is to restore the original volume.
+     * Mutes the VideoPlayer. Mute sets the volume=0, Un-Mute restore the original volume.
      * @zh
-     * 是否静音视频。设置音量为0时是静音，取消静音是恢复原来的音量。
+     * 是否静音视频。静音时设置音量为 0，取消静音是恢复原来的音量。
      */
     @tooltip('i18n:videoplayer.mute')
     get mute () {
@@ -200,9 +201,9 @@ export class VideoPlayer extends Component {
 
     /**
      * @en
-     * Whether the video should play again when it ends.
+     * Whether the video should be played again at the end
      * @zh
-     * 视频是否应在结束时再次播放。
+     * 视频是否应在结束时再次播放
      */
     @tooltip('i18n:videoplayer.loop')
     get loop () {
@@ -217,9 +218,9 @@ export class VideoPlayer extends Component {
 
     /**
      * @en
-     * Whether to keep the original aspect ratio of the video.
+     * Whether keep the aspect ration of the original video.
      * @zh
-     * 是否保持视频原来的宽高比。
+     * 是否保持视频原来的宽高比
      */
     @tooltip('i18n:videoplayer.keepAspectRatio')
     get keepAspectRatio () {
@@ -236,9 +237,9 @@ export class VideoPlayer extends Component {
 
     /**
      * @en
-     * Whether to play the video in full screen.
+     * Whether play video in fullscreen mode.
      * @zh
-     * 是否全屏播放视频。
+     * 是否全屏播放视频
      */
     @tooltip('i18n:videoplayer.fullScreenOnAwake')
     get fullScreenOnAwake () {
@@ -261,14 +262,12 @@ export class VideoPlayer extends Component {
 
     /**
      * @en
-     * Always at the bottom of the game view.
-     * This property relies on the translucency feature of Canvas, please enable ENABLE_TRANSPARENT_CANVAS in project preferences.
-     * Note: It's only available on the Web platform.
-     * Due to the support and limitations of each browser, the effect may not be guaranteed to be consistent.
+     * Always below the game view (only useful on Web.
+     * Note: The specific effects are not guaranteed to be consistent, depending on whether each browser supports or restricts).
+     * Note: This property depends on the translucency of Canvas, please enable ENABLE_TRANSPARENT_CANVAS in the project preferences
      * @zh
-     * 永远在游戏视图最底层。
-     * 该属性依赖 Canvas 的半透明特性，请在项目偏好设置里开启 ENABLE_TRANSPARENT_CANVAS。
-     * 注意：该属性只有在 Web 平台上有效果。由于各浏览器的支持与限制，效果可能无法保证一致。
+     * 永远在游戏视图最底层（这个属性只有在 Web 平台上有效果。注意：具体效果无法保证一致，跟各个浏览器是否支持与限制有关）
+     * 注意：该属性依赖 Canvas 的半透明特性，请在项目偏好设置里开启 ENABLE_TRANSPARENT_CANVAS
      */
     @tooltip('i18n:videoplayer.stayOnBottom')
     get stayOnBottom () {
@@ -288,7 +287,7 @@ export class VideoPlayer extends Component {
 
     /**
      * @en
-     * The video player's callback, it will be triggered in certain situations, such as playing, paused, stopped and completed.
+     * The video player's callback, it will be triggered when certain event occurs, like: playing, paused, stopped and completed.
      * @zh
      * 视频播放回调函数，该回调函数会在特定情况被触发，比如播放中，暂时，停止和完成播放。
      */
@@ -300,9 +299,9 @@ export class VideoPlayer extends Component {
 
     /**
      * @en
-     * Gets the original video object, generally used for user customization.
+     * Raw video objects for user customization
      * @zh
-     * 获取原始视频对象，一般用于用户定制。
+     * 原始视频对象，用于用户定制
      */
     get nativeVideo () {
         return (this._impl && this._impl.video) || null;
@@ -310,21 +309,14 @@ export class VideoPlayer extends Component {
 
     /**
      * @en
-     * Gets the time progress of the current video playback.
+     * The current playback time of the now playing item in seconds, you could also change the start playback time.
      * @zh
-     * 获取当前视频播放的时间进度。
+     * 指定视频从什么时间点开始播放，单位是秒，也可以用来获取当前视频播放的时间进度。
      */
     get currentTime () {
         if (!this._impl) { return this._cachedCurrentTime; }
         return this._impl.getCurrentTime();
     }
-
-    /**
-     * @en
-     * Sets the time point when the video starts to play, in seconds.
-     * @zh
-     * 设置视频开始播放的时间点，单位是秒。
-     */
     set currentTime (val: number) {
         if (Number.isNaN(val)) { warn(`illegal video time! value:${val}`); return; }
         val = clamp(val, 0, this.duration);
@@ -336,7 +328,7 @@ export class VideoPlayer extends Component {
 
     /**
      * @en
-     * Gets the audio duration, in seconds.
+     * Get the audio duration, in seconds.
      * @zh
      * 获取以秒为单位的视频总时长。
      */
@@ -347,7 +339,7 @@ export class VideoPlayer extends Component {
 
     /**
      * @en
-     * Gets current audio state.
+     * Get current audio state.
      * @zh
      * 获取当前视频状态。
      */
@@ -358,9 +350,9 @@ export class VideoPlayer extends Component {
 
     /**
      * @en
-     * Whether the current video is playing, The return value type is Boolean.
+     * Is the audio currently playing?
      * @zh
-     * 当前视频是否正在播放，返回值为布尔类型。
+     * 当前视频是否正在播放？
      */
     get isPlaying () {
         if (!this._impl) { return false; }
@@ -398,7 +390,6 @@ export class VideoPlayer extends Component {
         this._impl.componentEventList.set(EventType.STOPPED, this.onStopped.bind(this));
         this._impl.componentEventList.set(EventType.COMPLETED, this.onCompleted.bind(this));
         this._impl.componentEventList.set(EventType.ERROR, this.onError.bind(this));
-        this._impl.componentEventList.set(EventType.CLICKED, this.onClicked.bind(this));
         if (this._playOnAwake && this._impl.loaded) {
             this.play();
         }
@@ -465,11 +456,6 @@ export class VideoPlayer extends Component {
         this.node.emit(EventType.ERROR, this);
     }
 
-    public onClicked () {
-        ComponentEventHandler.emitEvents(this.videoPlayerEvent, this, EventType.CLICKED);
-        this.node.emit(EventType.CLICKED, this);
-    }
-
     /**
      * @en
      * Play the clip.<br>
@@ -488,10 +474,9 @@ export class VideoPlayer extends Component {
 
     /**
      * @en
-     * Resume the clip.
      * If a video is paused, call this method to resume playing.
      * @zh
-     * 继续播放。如果一个视频播放被暂停播放了，调用这个接口可以继续播放。
+     * 如果一个视频播放被暂停播放了，调用这个接口可以继续播放。
      */
     public resume () {
         if (this._impl) {

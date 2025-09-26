@@ -1,5 +1,5 @@
 'use strict';
-function translate(dump, path, dumps, assets, ignoreCollectAssets) {
+function translate(dump, path, dumps, assets) {
     const type = typeof dump;
     if (!dump || type !== 'object') {
         return;
@@ -23,15 +23,14 @@ function translate(dump, path, dumps, assets, ignoreCollectAssets) {
                     // 仅当存在 value 数据时才添加 values
                     item.values = values;
                 }
-                collectAssets(item, assets, ignoreCollectAssets);
-                translate(item.value, item.path, values, assets, ignoreCollectAssets);
+                collectAssets(item, assets);
+                translate(item.value, item.path, values, assets);
                 // 如果是数组，内部元素不需要显示 displayName
                 delete item.displayName;
             }
         });
         return;
     }
-
     for (const name of Object.keys(dump)) {
         const item = dump[name];
         if (item === null || item === undefined) {
@@ -41,16 +40,7 @@ function translate(dump, path, dumps, assets, ignoreCollectAssets) {
         if (typeof item === 'object') {
             item.name = name;
             item.path = `${path}.${name}`;
-
-            // Once parent data has visible = false，itself and children do not collect Assets any more.
-            let ignoreCollect = false;
-            if (ignoreCollectAssets) {
-                ignoreCollect = ignoreCollectAssets;
-            } else {
-                ignoreCollect = !item.visible;
-            }
-
-            collectAssets(item, assets, ignoreCollect);
+            collectAssets(item, assets);
             collectGroups(item);
             let values;
             if (dumps) {
@@ -66,8 +56,7 @@ function translate(dump, path, dumps, assets, ignoreCollectAssets) {
                     values = undefined;
                 }
             }
-
-            translate(item.value, item.path, values, assets, ignoreCollect);
+            translate(item.value, item.path, values, assets);
         }
     }
 }
@@ -76,8 +65,8 @@ function translate(dump, path, dumps, assets, ignoreCollectAssets) {
  * @param item
  * @param assets
  */
-function collectAssets(dump, assets, ignore) {
-    if (!ignore && Array.isArray(dump.extends) && dump.value && dump.value.uuid) {
+function collectAssets(dump, assets) {
+    if (dump.visible && Array.isArray(dump.extends) && dump.value && dump.value.uuid) {
         if (dump.extends.includes('cc.Asset')) {
             if (!assets[dump.type]) {
                 assets[dump.type] = {};
@@ -148,7 +137,6 @@ function translationDump(dump, dumps, assets) {
     dump.position.path = 'position';
     dump.rotation.path = 'rotation';
     dump.scale.path = 'scale';
-    dump.mobility.path = 'mobility';
     dump.layer.path = 'layer';
     if (dumps) {
         dump.active.values = dumps.map((dump) => dump.active.value);
@@ -156,7 +144,6 @@ function translationDump(dump, dumps, assets) {
         dump.position.values = dumps.map((dump) => dump.position.value);
         dump.rotation.values = dumps.map((dump) => dump.rotation.value);
         dump.scale.values = dumps.map((dump) => dump.scale.value);
-        dump.mobility.values = dumps.map((dump) => dump.mobility.value);
         dump.layer.values = dumps.map((dump) => dump.layer.value);
     }
     for (let i = 0; i < dump.__comps__.length; i++) {

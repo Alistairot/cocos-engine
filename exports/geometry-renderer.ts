@@ -1,1 +1,1 @@
-export * from '../cocos/rendering/geometry-renderer';
+export * from '../cocos/core/pipeline/geometry-renderer';

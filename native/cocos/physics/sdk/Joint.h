@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2020-2022 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -52,18 +53,12 @@ CC_PHYSICS_JOINT_CLASS(RevoluteJoint)
 void setPivotA(float x, float y, float z) override;
 void setPivotB(float x, float y, float z) override;
 void setAxis(float x, float y, float z) override;
-}; // RevoluteJoint
+}; // namespace physics
 
 CC_PHYSICS_JOINT_CLASS(DistanceJoint)
 void setPivotA(float x, float y, float z) override;
 void setPivotB(float x, float y, float z) override;
-}; // DistanceJoint
-
-CC_PHYSICS_JOINT_CLASS(FixedJoint)
-void setBreakForce(float force) override;
-void setBreakTorque(float torque) override;
-}
-; // FixedJoint
+}; // namespace cc
 
 } // namespace physics
 } // namespace cc

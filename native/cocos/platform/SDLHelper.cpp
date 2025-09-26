@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2022-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2022 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -27,9 +28,8 @@
 #include "SDL2/SDL_main.h"
 #include "SDL2/SDL_syswm.h"
 #include "base/Log.h"
-#include "engine/EngineEvents.h"
+#include "platform/IEventDispatch.h"
 #include "platform/interfaces/modules/ISystemWindow.h"
-#include "platform/interfaces/modules/ISystemWindowManager.h"
 
 namespace {
 std::unordered_map<int, cc::KeyCode> gKeyMap = {
@@ -144,10 +144,18 @@ int windowFlagsToSDLWindowFlag(int flags) {
 } // namespace
 
 namespace cc {
-SDLHelper::SDLHelper() {}
+SDLHelper::SDLHelper(IEventDispatch *delegate)
+: _delegate(delegate) {
+}
 
 SDLHelper::~SDLHelper() {
-    SDL_Quit();
+    if (_handle) {
+        SDL_DestroyWindow(_handle);
+        _handle = nullptr;
+    }
+    if (_isWindowCreated) {
+        SDL_Quit();
+    }
 }
 
 int SDLHelper::init() {
@@ -158,44 +166,41 @@ int SDLHelper::init() {
     }
     return 0;
 }
-
-void SDLHelper::dispatchWindowEvent(uint32_t windowId, const SDL_WindowEvent &wevent) {
+void SDLHelper::dispatchWindowEvent(const SDL_WindowEvent &wevent) {
     WindowEvent ev;
-    ev.windowId = windowId;
-
     switch (wevent.event) {
         case SDL_WINDOWEVENT_SHOWN: {
             ev.type = WindowEvent::Type::SHOW;
-            events::WindowEvent::broadcast(ev);
+            _delegate->dispatchEvent(ev);
             break;
         }
         case SDL_WINDOWEVENT_RESTORED: {
             ev.type = WindowEvent::Type::RESTORED;
-            events::WindowEvent::broadcast(ev);
+            _delegate->dispatchEvent(ev);
             break;
         }
         case SDL_WINDOWEVENT_SIZE_CHANGED: {
             ev.type = WindowEvent::Type::SIZE_CHANGED;
             ev.width = wevent.data1;
             ev.height = wevent.data2;
-            events::WindowEvent::broadcast(ev);
+            _delegate->dispatchEvent(ev);
             break;
         }
         case SDL_WINDOWEVENT_RESIZED: {
             ev.type = WindowEvent::Type::RESIZED;
             ev.width = wevent.data1;
             ev.height = wevent.data2;
-            events::WindowEvent::broadcast(ev);
+            _delegate->dispatchEvent(ev);
             break;
         }
         case SDL_WINDOWEVENT_HIDDEN: {
             ev.type = WindowEvent::Type::HIDDEN;
-            events::WindowEvent::broadcast(ev);
+            _delegate->dispatchEvent(ev);
             break;
         }
         case SDL_WINDOWEVENT_MINIMIZED: {
             ev.type = WindowEvent::Type::MINIMIZED;
-            events::WindowEvent::broadcast(ev);
+            _delegate->dispatchEvent(ev);
             break;
         }
         case SDL_WINDOWEVENT_ENTER: {
@@ -204,23 +209,16 @@ void SDLHelper::dispatchWindowEvent(uint32_t windowId, const SDL_WindowEvent &we
         }
         case SDL_WINDOWEVENT_CLOSE: {
             ev.type = WindowEvent::Type::CLOSE;
-            events::WindowEvent::broadcast(ev);
+            _delegate->dispatchEvent(ev);
             break;
         }
     }
 }
 
-void SDLHelper::dispatchSDLEvent(uint32_t windowId, const SDL_Event &sdlEvent, bool *quit) {
+void SDLHelper::dispatchSDLEvent(const SDL_Event &sdlEvent, bool *quit) {
     cc::TouchEvent touch;
     cc::MouseEvent mouse;
     cc::KeyboardEvent keyboard;
-
-    touch.windowId = windowId;
-    mouse.windowId = windowId;
-    keyboard.windowId = windowId;
-
-    SDL_Window *window = SDL_GetWindowFromID(sdlEvent.window.windowID);
-
     switch (sdlEvent.type) {
         case SDL_QUIT: {
             if (quit) {
@@ -228,17 +226,17 @@ void SDLHelper::dispatchSDLEvent(uint32_t windowId, const SDL_Event &sdlEvent, b
             }
             WindowEvent ev;
             ev.type = WindowEvent::Type::QUIT;
-            events::WindowEvent::broadcast(ev);
+            _delegate->dispatchEvent(ev);
             break;
         }
         case SDL_WINDOWEVENT: {
-            dispatchWindowEvent(windowId, sdlEvent.window);
+            dispatchWindowEvent(sdlEvent.window);
             break;
         }
         case SDL_MOUSEBUTTONDOWN: {
             int width = 0;
             int height = 0;
-            SDL_GetWindowSize(window, &width, &height);
+            SDL_GetWindowSize(_handle, &width, &height);
             const SDL_MouseButtonEvent &event = sdlEvent.button;
             if (0 > event.x || event.x > width || 0 > event.y || event.y > height) {
                 break;
@@ -247,7 +245,7 @@ void SDLHelper::dispatchSDLEvent(uint32_t windowId, const SDL_Event &sdlEvent, b
             mouse.x = static_cast<float>(event.x);
             mouse.y = static_cast<float>(event.y);
             mouse.button = event.button - 1;
-            events::Mouse::broadcast(mouse);
+            _delegate->dispatchEvent(mouse);
             break;
         }
         case SDL_MOUSEBUTTONUP: {
@@ -256,18 +254,16 @@ void SDLHelper::dispatchSDLEvent(uint32_t windowId, const SDL_Event &sdlEvent, b
             mouse.x = static_cast<float>(event.x);
             mouse.y = static_cast<float>(event.y);
             mouse.button = event.button - 1;
-            events::Mouse::broadcast(mouse);
+            _delegate->dispatchEvent(mouse);
             break;
         }
         case SDL_MOUSEMOTION: {
             const SDL_MouseMotionEvent &event = sdlEvent.motion;
             mouse.type = MouseEvent::Type::MOVE;
-            mouse.button = 0;
             mouse.x = static_cast<float>(event.x);
             mouse.y = static_cast<float>(event.y);
-            mouse.xDelta = static_cast<float>(event.xrel);
-            mouse.yDelta = static_cast<float>(event.yrel);
-            events::Mouse::broadcast(mouse);
+            mouse.button = 0;
+            _delegate->dispatchEvent(mouse);
             break;
         }
         case SDL_MOUSEWHEEL: {
@@ -276,28 +272,28 @@ void SDLHelper::dispatchSDLEvent(uint32_t windowId, const SDL_Event &sdlEvent, b
             mouse.x = static_cast<float>(event.x);
             mouse.y = static_cast<float>(event.y);
             mouse.button = 0; //TODO: direction
-            events::Mouse::broadcast(mouse);
+            _delegate->dispatchEvent(mouse);
             break;
         }
         case SDL_FINGERUP: {
             const SDL_TouchFingerEvent &event = sdlEvent.tfinger;
             touch.type = TouchEvent::Type::ENDED;
             touch.touches = {TouchInfo(event.x, event.y, (int)event.fingerId)};
-            events::Touch::broadcast(touch);
+            _delegate->dispatchTouchEvent(touch);
             break;
         }
         case SDL_FINGERDOWN: {
             const SDL_TouchFingerEvent &event = sdlEvent.tfinger;
             touch.type = TouchEvent::Type::BEGAN;
             touch.touches = {TouchInfo(event.x, event.y, (int)event.fingerId)};
-            events::Touch::broadcast(touch);
+            _delegate->dispatchTouchEvent(touch);
             break;
         }
         case SDL_FINGERMOTION: {
             const SDL_TouchFingerEvent &event = sdlEvent.tfinger;
             touch.type = TouchEvent::Type::MOVED;
             touch.touches = {TouchInfo(event.x, event.y, (int)event.fingerId)};
-            events::Touch::broadcast(touch);
+            _delegate->dispatchTouchEvent(touch);
             break;
         }
         case SDL_KEYDOWN: {
@@ -309,7 +305,7 @@ void SDLHelper::dispatchSDLEvent(uint32_t windowId, const SDL_Event &sdlEvent, b
             keyboard.ctrlKeyActive = mode & KMOD_CTRL;
             keyboard.shiftKeyActive = mode & KMOD_SHIFT;
             //CC_LOG_DEBUG("==> key %d -> code %d", event.keysym.sym, keyboard.key);
-            events::Keyboard::broadcast(keyboard);
+            _delegate->dispatchEvent(keyboard);
             break;
         }
         case SDL_KEYUP: {
@@ -320,8 +316,7 @@ void SDLHelper::dispatchSDLEvent(uint32_t windowId, const SDL_Event &sdlEvent, b
             keyboard.altKeyActive = mode & KMOD_ALT;
             keyboard.ctrlKeyActive = mode & KMOD_CTRL;
             keyboard.shiftKeyActive = mode & KMOD_SHIFT;
-            events::Keyboard::broadcast(keyboard);
-            break;
+            _delegate->dispatchEvent(keyboard);
             break;
         }
         default:
@@ -329,58 +324,82 @@ void SDLHelper::dispatchSDLEvent(uint32_t windowId, const SDL_Event &sdlEvent, b
     }
 }
 
-SDL_Window *SDLHelper::createWindow(const char *title,
-                                    int w, int h, int flags) {
+void SDLHelper::pollEvent(bool *quit) {
+    SDL_Event sdlEvent;
+    int cnt = 0;
+    while ((cnt = SDL_PollEvent(&sdlEvent)) != 0) {
+        dispatchSDLEvent(sdlEvent, quit);
+        if (*quit) {
+            break;
+        }
+    }
+}
+
+bool SDLHelper::createWindow(const char *title,
+                             int w, int h, int flags) {
+    if (_isWindowCreated) {
+        return true;
+    }
     SDL_Rect screenRect;
     if (SDL_GetDisplayUsableBounds(0, &screenRect) != 0) {
-        return nullptr;
+        return false;
     }
     int x = screenRect.x;
     int y = screenRect.y + screenRect.h - h;
     return createWindow(title, x, y, w, h, flags);
 }
 
-SDL_Window *SDLHelper::createWindow(const char *title,
-                                    int x, int y, int w,
-                                    int h, int flags) {
+bool SDLHelper::createWindow(const char *title,
+                             int x, int y, int w,
+                             int h, int flags) {
+    if (_isWindowCreated) {
+        return true;
+    }
     // Create window
     int sdlFlags = windowFlagsToSDLWindowFlag(flags);
-    SDL_Window *handle = SDL_CreateWindow(title, x, y, w, h, sdlFlags);
-    if (handle == nullptr) {
+    _handle = SDL_CreateWindow(title, x, y, w, h, sdlFlags);
+    if (_handle == nullptr) {
         // Display error message
         CC_LOG_ERROR("Window could not be created! SDL_Error: %s\n", SDL_GetError());
-        return nullptr;
+        return false;
     }
-
-    return handle;
+    _isWindowCreated = true;
+    return true;
 }
 
 void SDLHelper::setCursorEnabled(bool value) {
     SDL_SetRelativeMouseMode(value ? SDL_FALSE : SDL_TRUE);
-    events::PointerLock::broadcast(!value);
+}
+
+void SDLHelper::swapWindow() {
+    SDL_GL_SwapWindow(_handle);
 }
 
 #if (CC_PLATFORM == CC_PLATFORM_LINUX)
-uintptr_t SDLHelper::getDisplay(SDL_Window *window) {
+uintptr_t SDLHelper::getDisplay() const {
     SDL_SysWMinfo wmInfo;
     SDL_VERSION(&wmInfo.version);
-    SDL_GetWindowWMInfo(window, &wmInfo);
+    SDL_GetWindowWMInfo(_handle, &wmInfo);
     return reinterpret_cast<uintptr_t>(wmInfo.info.x11.display);
 }
 #endif
 
-uintptr_t SDLHelper::getWindowHandle(SDL_Window *window) {
+uintptr_t SDLHelper::getWindowHandle() const {
     SDL_SysWMinfo wmInfo;
     SDL_VERSION(&wmInfo.version);
-    SDL_GetWindowWMInfo(window, &wmInfo);
+    SDL_GetWindowWMInfo(_handle, &wmInfo);
 
 #if CC_PLATFORM == CC_PLATFORM_WINDOWS
     return reinterpret_cast<uintptr_t>(wmInfo.info.win.window);
 #elif (CC_PLATFORM == CC_PLATFORM_LINUX)
     return reinterpret_cast<uintptr_t>(wmInfo.info.x11.window);
 #endif
-    CC_ABORT();
+    CC_ASSERT(false);
     return 0;
+}
+
+SDL_Window *SDLHelper::getSDLWindowHandle() const {
+    return _handle;
 }
 
 } // namespace cc

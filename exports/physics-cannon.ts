@@ -26,7 +26,7 @@
 import CANNON from '@cocos/cannon';
 import '../cocos/physics/cannon/instantiate';
 
-if (globalThis) globalThis.CANNON = CANNON;
+if (window) window.CANNON = CANNON;
 
 // polyfill config
 (CANNON as any).CC_CONFIG = {

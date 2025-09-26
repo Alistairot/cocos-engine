@@ -27,7 +27,7 @@
 #include "base/std/container/string.h"
 //#import "Game.h"
 #import "ViewController.h"
-#include "engine/EngineEvents.h"
+#include "cocos/bindings/event/EventDispatcher.h"
 #include "platform/mac/MacPlatform.h"
 
 @interface AppDelegate () {
@@ -43,48 +43,42 @@
     [self createWindow:title xPos:0 yPos:0 width:w height:h];
 }
 
-- (NSWindow*)createWindow:(NSString*)title xPos:(int)x yPos:(int)y width:(int)w height:(int)h {
-    //_window.title = title;
+- (void)createWindow:(NSString*)title xPos:(int)x yPos:(int)y width:(int)w height:(int)h {
+    _window.title = title;
     NSRect rect = NSMakeRect(x, y, w, h);
-    NSWindow* window = [[NSWindow alloc] initWithContentRect:rect
+    _window = [[NSWindow alloc] initWithContentRect:rect
                                           styleMask:NSWindowStyleMaskMiniaturizable | NSWindowStyleMaskTitled | NSWindowStyleMaskClosable | NSWindowStyleMaskResizable
                                             backing:NSBackingStoreBuffered
                                               defer:NO];
-    if (!window) {
+    if (!_window) {
         NSLog(@"Failed to allocated the window.");
-        return nullptr;
+        return;
     }
-    
     ViewController* viewController = [[ViewController alloc] initWithSize:rect];
-    window.contentViewController = viewController;
-    window.contentView = viewController.view;
+    _window.contentViewController = viewController;
+    _window.contentView = viewController.view;
     [viewController release];
     viewController = nil;
     
-    window.title = title;
-    [window.contentView setWantsBestResolutionOpenGLSurface:YES];
-    [window makeKeyAndOrderFront:nil];
+    [_window.contentView setWantsBestResolutionOpenGLSurface:YES];
+    [_window makeKeyAndOrderFront:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(windowWillMiniaturizeNotification)
                                                  name:NSWindowWillMiniaturizeNotification
-                                               object:window];
+                                               object:_window];
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(windowDidDeminiaturizeNotification)
                                                  name:NSWindowDidDeminiaturizeNotification
-                                               object:window];
+                                               object:_window];
     [[NSNotificationCenter defaultCenter] addObserver:self
                                              selector:@selector(windowWillCloseNotification)
                                                  name:NSWindowWillCloseNotification
-                                               object:window];
-    if (!_window) {
-        _window = window;
-    }
-    return window;
+                                               object:_window];
 }
 
 - (void)applicationDidFinishLaunching:(NSNotification*)aNotification {
     _platform = dynamic_cast<cc::MacPlatform*>(cc::BasePlatform::getPlatform());
-    CC_ASSERT_NOT_NULL(_platform);
+    CC_ASSERT(_platform != nullptr);
     _platform->loop();
 }
 
@@ -113,6 +107,10 @@
 
 - (BOOL)applicationShouldTerminateAfterLastWindowClosed:(NSApplication*)theApplication {
     return YES;
+}
+
+- (void)dispatchEvent:(const cc::OSEvent&)ev {
+    _platform->dispatchEvent(ev);
 }
 
 @end

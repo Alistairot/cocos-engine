@@ -1,17 +1,18 @@
 /****************************************************************************
- Copyright (c) 2020-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2020-2022 Xiamen Yaji Software Co., Ltd.
 
  http://www.cocos.com
 
  Permission is hereby granted, free of charge, to any person obtaining a copy
- of this software and associated documentation files (the "Software"), to deal
- in the Software without restriction, including without limitation the rights to
- use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies
- of the Software, and to permit persons to whom the Software is furnished to do so,
- subject to the following conditions:
+ of this software and associated engine source code (the "Software"), a limited,
+ worldwide, royalty-free, non-assignable, revocable and non-exclusive license
+ to use Cocos Creator solely to develop games on your target platforms. You shall
+ not use Cocos Creator software for developing other software or tools that's
+ used for developing games. You are not granted to publish, distribute,
+ sublicense, and/or sell copies of Cocos Creator.
 
- The above copyright notice and this permission notice shall be included in
- all copies or substantial portions of the Software.
+ The software or tools in this License Agreement are licensed, not sold.
+ Xiamen Yaji Software Co., Ltd. reserves all rights not expressly granted to you.
 
  THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
  IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
@@ -44,10 +45,6 @@ class Fog;
 class Octree;
 class Light;
 } // namespace scene
-namespace gi {
-class LightProbes;
-}
-
 namespace pipeline {
 
 class CC_DLL PipelineSceneData : public RefCounted {
@@ -64,7 +61,6 @@ public:
     inline const RenderObjectList &getRenderObjects() const { return _renderObjects; }
     inline void setRenderObjects(RenderObjectList &&ro) { _renderObjects = std::forward<RenderObjectList>(ro); }
     inline const ccstd::vector<const scene::Light *> &getValidPunctualLights() const { return _validPunctualLights; }
-    inline void setValidPunctualLights(ccstd::vector<const scene::Light *> lights) { _validPunctualLights = std::move(lights); }
     inline bool isHDR() const { return _isHDR; }
     inline void setHDR(bool val) { _isHDR = val; }
     inline scene::Shadows *getShadows() const { return _shadow; }
@@ -73,7 +69,6 @@ public:
     inline scene::Skybox *getSkybox() const { return _skybox; }
     inline scene::Fog *getFog() const { return _fog; }
     inline scene::Octree *getOctree() const { return _octree; }
-    inline gi::LightProbes *getLightProbes() const { return _lightProbes; }
     inline gfx::InputAssembler *getOcclusionQueryInputAssembler() const { return _occlusionQueryInputAssembler; }
     inline scene::Pass *getOcclusionQueryPass() const { return _occlusionQueryPass; }
     inline gfx::Shader *getOcclusionQueryShader() const { return _occlusionQueryShader; }
@@ -121,8 +116,6 @@ protected:
     // manage memory manually
     scene::Octree *_octree{nullptr};
     // manage memory manually
-    gi::LightProbes *_lightProbes{nullptr};
-
     CSMLayers *_csmLayers{nullptr};
 
     bool _isHDR{true};

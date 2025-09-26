@@ -1,7 +1,7 @@
 /**
  Copyright 2013 BlackBerry Inc.
  Copyright (c) 2014-2016 Chukong Technologies Inc.
- Copyright (c) 2017-2023 Xiamen Yaji Software Co., Ltd.
+ Copyright (c) 2017-2018 Xiamen Yaji Software Co., Ltd.
 
  Licensed under the Apache License, Version 2.0 (the "License");
  you may not use this file except in compliance with the License.
@@ -920,7 +920,7 @@ public:
     /**
      * Determines if this matrix is approximately equal to the given matrix.
      */
-    bool approxEquals(const Mat4 &v, float precision = CC_FLOAT_CMP_PRECISION) const;
+    bool approxEquals(const Mat4& v, float precision = CC_FLOAT_CMP_PRECISION) const;
 
     /** equals to a matrix full of zeros */
     static const Mat4 ZERO;
