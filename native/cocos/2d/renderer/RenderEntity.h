@@ -134,6 +134,9 @@ public:
         return _renderEntityType == RenderEntityType::STATIC ? &(_staticDrawInfos[index]) : _dynamicDrawInfos[index];
     }
 
+    inline float getRenderPriority() const { return _renderPriority; }
+    inline void setRenderPriority(float value) { _renderPriority = value; }
+
 private:
     CC_DISALLOW_COPY_MOVE_ASSIGN(RenderEntity);
     // weak reference
@@ -154,5 +157,7 @@ private:
     RenderEntityType _renderEntityType{RenderEntityType::STATIC};
     uint8_t _staticDrawInfoSize{0};
     bool _vbColorDirty{true};
+
+    float _renderPriority{0.0F};
 };
 } // namespace cc
