@@ -30,6 +30,8 @@ import android.view.MotionEvent;
 import android.view.Surface;
 import android.view.SurfaceView;
 
+import com.google.androidgamesdk.BuildConfig;
+
 public class CocosTouchHandler {
     public final static String TAG = "CocosTouchHandler";
     private boolean mStopHandleTouchAndKeyEvents = false;
