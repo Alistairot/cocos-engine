@@ -660,8 +660,7 @@ private:
     uint8_t _activeInHierarchy{0};                                      // Uint8: 0
     uint8_t _active{1};                                                 // Uint8: 1
     uint8_t _isStatic{0};                                               // Uint8: 2
-    // uint8_t _padding{0};                                                // Uint8: 3
-    uint8_t _uiSortingEnabled{0};                                       // Uint8: 3
+    uint8_t _uiSortingEnabled{0};                                                // Uint8: 3
 
     /* set _hasChangedFlagsVersion to globalFlagChangeVersion when `_hasChangedFlags` updated.
      * `globalFlagChangeVersion == _hasChangedFlagsVersion` means that "_hasChangedFlags is dirty in current frametime".

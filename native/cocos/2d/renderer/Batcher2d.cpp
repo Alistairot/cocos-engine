@@ -45,8 +45,8 @@ Batcher2d::Batcher2d(Root* root)
     _root = root;
     _device = _root->getDevice();
     _stencilManager = StencilManager::getInstance();
-
-    // LCC_UI_SORTING_GROUP
+	
+	// LCC_UI_SORTING_GROUP
 	rendererCache.reserve(1024);
 	rendererOrder = false;
 }
@@ -99,20 +99,11 @@ void Batcher2d::syncRootNodesToNative(ccstd::vector<Node*>&& rootNodes) {
 }
 
 void Batcher2d::fillBuffersAndMergeBatches() {
-    size_t index = 0;
     for (auto* rootNode : _rootNodeArr) {
-        // _batches will add by generateBatch
         walk(rootNode, 1, true, 0, 0);
         // CC_LOG_INFO("-------------- flushRendererCache 1 -------------- %d", _rootNodeArr.size());
         flushRendererCache(); // LCC_UI_SORTING_GROUP
         generateBatch(_currEntity, _currDrawInfo);
-
-        auto* scene = rootNode->getScene()->getRenderScene();
-        size_t const count = _batches.size();
-        for (size_t i = index; i < count; i++) {
-            scene->addBatch(_batches.at(i));
-        }
-        index = count;
     }
 }
 
@@ -120,7 +111,6 @@ void Batcher2d::walk(Node* node, float parentOpacity, bool cacheEnable, float so
     if (!node->isActiveInHierarchy()) {
         return;
     }
-
     sortingPriority = node->isUISortingEnabled() ? node->getUISortingPriority() : sortingPriority;
 	if(node->isUISortingEnabled()){
 		++sortingLevel;
@@ -136,9 +126,9 @@ void Batcher2d::walk(Node* node, float parentOpacity, bool cacheEnable, float so
             entity->setColorDirty(false);
             entity->setVBColorDirty(true);
         }
-        if (math::isEqualF(entity->getOpacity(), 0)) {
-            breakWalk = true;
-        } else if (entity->isEnabled()) {
+
+        // LCC_UI_SORTING_GROUP
+        if (entity->isEnabled()) {
 			if(sortingLevel > 0){
 				if(entity->getIsMask() || !cacheEnable){
 					// CC_LOG_INFO("-------------- flushRendererCache 2 --------------");
@@ -165,6 +155,7 @@ void Batcher2d::walk(Node* node, float parentOpacity, bool cacheEnable, float so
 				entity->setVBColorDirty(false);
 			}
         }
+
         if (entity->getRenderEntityType() == RenderEntityType::CROSSED) {
             breakWalk = true;
         }
@@ -183,8 +174,8 @@ void Batcher2d::walk(Node* node, float parentOpacity, bool cacheEnable, float so
     if (_stencilManager->getMaskStackSize() > 0 && entity && entity->isEnabled()) {
         handlePostRender(entity);
     }
-
-    if(node->isUISortingEnabled()){
+	
+	if(node->isUISortingEnabled()){
 		--sortingLevel;
 		if(sortingLevel <= 0){
 			flushRendererCache(); 
@@ -526,6 +517,12 @@ bool Batcher2d::initialize() {
 void Batcher2d::update() {
     fillBuffersAndMergeBatches();
     resetRenderStates();
+
+    for (const auto& scene : Root::getInstance()->getScenes()) {
+        for (auto* batch : _batches) {
+            scene->addBatch(batch);
+        }
+    }
 }
 
 void Batcher2d::uploadBuffers() {

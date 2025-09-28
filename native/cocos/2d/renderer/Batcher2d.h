@@ -136,12 +136,12 @@ private:
 
     void insertMaskBatch(RenderEntity* entity);
     void createClearModel();
-
-    // LCC_UI_SORTING_GROUP
+	
+	// LCC_UI_SORTING_GROUP
 	ccstd::vector<RenderEntity*> rendererCache;
 	bool rendererOrder;
 	void flushRendererCache();
-
+	
     gfx::DescriptorSet* getDescriptorSet(gfx::Texture* texture, gfx::Sampler* sampler, const gfx::DescriptorSetLayout* dsLayout);
 
     StencilManager* _stencilManager{nullptr};
